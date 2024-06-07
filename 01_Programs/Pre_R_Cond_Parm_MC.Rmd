@@ -1,0 +1,56 @@
+---
+title: "Pre Response Conditional Parameter MC"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is code which processes the pre-response parameter settings from a
+driver file and derives response-conditional variance/mean parameters and stores
+them
+
+
+```{r Load in Preamble}
+# Load in packages and file paths
+source(file="Preamble.R")
+```
+
+```{r Load in Functions}
+# Pull in functions for general data maintenance
+source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
+# Pull in functions for pre-response MC simulations
+source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
+```
+
+
+```{r Read in Driver}
+# Read in driver
+raw_driver <- read_xlsx(path=paste0(notes_path, "Driver_Three_Level_Simulations.xlsx"), 
+                        sheet="var_parm_settings_pre_r")
+```
+
+```{r Execute Driver File}
+#NOTE: Data will only be reproducible for same n_threads value
+registerDoParallel()
+#UGA vs TCU - CFP Championship 2023
+registerDoRNG(seed=657)
+#Execute driver file
+full_output <- Execute_Raw_Driver_File_Pre_R(raw_driver=raw_driver, 
+                                             do_par=TRUE, 
+                                             n_threads=5)
+```
+
+
+```{r Export Results}
+# Get file name parameters_YYYYMMDD (with a/b/... suffix if files already exist)
+pre_r_MC_parms_export_file_name <- Get_Export_File_Name(path=pre_r_param_path,
+                                                        prefix="parameters_", 
+                                                        file_suffix=".xlsx")
+
+# Export results
+Export_Driver_Results(driver=Expand_Driver_File(raw_driver),
+                      driver_results=full_output,
+                      path=pre_r_param_path,
+                      file_name=pre_r_MC_parms_export_file_name)
+```
+

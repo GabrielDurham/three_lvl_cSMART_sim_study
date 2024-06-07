@@ -1,0 +1,104 @@
+---
+title: "Check Distribution Consistency"
+output: html_notebook
+---
+
+This is code to check whether the empirical marginal/conditional distributions
+match the specifications
+
+```{r Load in Preamble}
+# Load in packages and file paths
+source(file="Preamble.R")
+```
+
+```{r}
+# Pull in functions for general data maintenance
+source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
+# Pull in functions for pre-response MC simulations
+source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
+# Pull in functions for error distribution generation
+source(file=paste0(helper_funcs_path, "Derive_Error_Distributions.R"))
+# Pull in functions for collecting all simulation parameters
+source(file=paste0(helper_funcs_path, "Generate_All_Simulation_Parameters.R"))
+# Pull in functions for data simulation
+source(file=paste0(helper_funcs_path, "Simulate_SMART_Data.R"))
+# Pull in functions for consistency checking
+source(file=paste0(helper_funcs_path, "Check_Distribution_Consistency.R"))
+```
+
+```{r Read in Driver}
+# Define alternate fit settings
+alt_fit_settings_types_sheets <- list(c("static", "alt_fit_settings_static"))
+
+
+# Read in Driver File
+full_driver <- Read_Driver_File(path=paste0(notes_path, "Driver_Three_Level_Simulations.xlsx"), 
+                                driver_sheet="main", 
+                                cp_sheet="cond_param_settings",
+                                var_parm_pre_r_sheet="var_parm_settings_pre_r",
+                                var_parm_post_r_sheet="var_parm_settings_post_r",
+                                fit_settings_sheet="fit_settings",
+                                alt_fit_settings_types_sheets=alt_fit_settings_types_sheets)
+```
+
+```{r Read in Conditional Parameters}
+# Read in Conditional Parameters
+pre_r_mc_parms <- Import_Pre_R_MC_Results(path=pre_r_param_path, 
+                                          prefix="parameters_", 
+                                          pre_r_marg_parms=full_driver[["var_parms_pre_r"]])
+```
+
+
+
+
+```{r Get Driver Parms for Distribution Check}
+# Get Driver Parms for Distribution Check
+check_driver_parms <- Process_Driver_Row_for_Check(driver=full_driver[["driver"]], 
+                                                   sim_label="test-small-n-20",
+                                                   cluster_size=2, 
+                                                   n_clusters=150000)
+check_sim_parms <- Obtain_All_Sim_Params(driver_parms=check_driver_parms, 
+                                         cp_settings_df=full_driver[["cp_settings"]],
+                                         pre_r_marg_parms=full_driver[["var_parms_pre_r"]], 
+                                         pre_r_cond_var_parms=pre_r_mc_parms, 
+                                         post_r_var_parms=full_driver[["var_parms_post_r"]])
+```
+
+```{r Simulate Data}
+# Simulate Data
+check_data <- Sim_SMART_Data_Wide(driver_parms=check_driver_parms, 
+                                  sim_parms=check_sim_parms)
+```
+
+
+```{r Store Output}
+# Store Output
+export_file_name <- Get_Export_File_Name(path=paste0(notes_path, "Consistency_Check/"), 
+                                         prefix="consistency_check_", 
+                                         file_suffix=".RDS")
+saveRDS(object=list(results=check_results,
+                    #data=check_data, 
+                    driver_parms=check_driver_parms, 
+                    sim_parms=check_sim_parms),
+        file=paste0(notes_path, "Consistency_Check/", export_file_name))
+```
+
+
+
+```{r Compare Distributions}
+# Compare Distributions
+check_results <- Check_Distribution_Consistency(driver_parms=check_driver_parms,
+                                                wide_data=check_data,
+                                                sim_parms=check_sim_parms,
+                                                cluster_size=2)
+```
+
+
+```{r Display Topline Consistency}
+# Display topline consistency
+formatted_check_d_1_1 <- Display_Topline_Consistency(consistency_check=check_results,
+                                                     dtr="d_1_1",
+                                                     title="Distribution For Embedded DTR (1,1)")
+```
+
+

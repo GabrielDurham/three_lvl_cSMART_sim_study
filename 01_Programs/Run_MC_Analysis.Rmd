@@ -1,0 +1,116 @@
+---
+title: "Run_MC_Analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is code which processes driver file settings to simulate data from
+a three-level clustered SMART and analyze the data using the method proposed
+in this paper
+
+
+```{r Load in Preamble}
+# Load in packages and file paths
+source(file="Preamble.R")
+```
+
+```{r Load in Functions}
+# Pull in functions for general data maintenance
+source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
+# Pull in functions for pre-response MC simulations
+source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
+# Pull in functions for error distribution generation
+source(file=paste0(helper_funcs_path, "Derive_Error_Distributions.R"))
+# Pull in functions for collecting all simulation parameters
+source(file=paste0(helper_funcs_path, "Generate_All_Simulation_Parameters.R"))
+# Pull in functions for data simulation
+source(file=paste0(helper_funcs_path, "Simulate_SMART_Data.R"))
+# Pull in functions for model fitting
+source(file=paste0(helper_funcs_path, "Simulate_and_Fit_Data.R"))
+# Pull in functions for inference
+source(file=paste0(helper_funcs_path, "Conduct_Inference.R"))
+# Pull in model fitting function
+source(file=paste0(model_fit_func_path, "function_v3.5.R"))
+```
+
+
+```{r Read in Driver}
+# Define alternate fit settings
+alt_fit_settings_types_sheets <- list(c("static", "alt_fit_settings_static"))
+
+
+# Read in Driver File
+full_driver <- Read_Driver_File(path=paste0(notes_path, "Driver_Three_Level_Simulations.xlsx"), 
+                                driver_sheet="main", 
+                                cp_sheet="cond_param_settings",
+                                var_parm_pre_r_sheet="var_parm_settings_pre_r",
+                                var_parm_post_r_sheet="var_parm_settings_post_r",
+                                fit_settings_sheet="fit_settings",
+                                alt_fit_settings_types_sheets=alt_fit_settings_types_sheets)
+```
+
+```{r Read in Conditional Parameters}
+# Read in Conditional Parameters
+pre_r_mc_parms <- Import_Pre_R_MC_Results(path=pre_r_param_path, 
+                                          prefix="parameters_")
+```
+
+
+
+```{r Grab folder name}
+# Grab folder name for exporting
+export_folder_name <- Get_Export_File_Name(path=data_path, 
+                                           prefix="run_", 
+                                           file_suffix="")
+```
+
+
+
+
+```{r Run Simulations}
+# Execute a Main Sheet of a Driver File
+### full_driver = Output of Read_Driver_File() function
+### pre_r_mc_parms = Output of Import_Pre_R_MC_Results() function
+### do_par = Boolean indicating whether to parallelize
+### n_threads = Number of parallel threads to run, used if do_par==TRUE
+###             Note: Parallelization done using doRNG package, ensuring
+###                   replicability with respect to random seed
+### path = Path with past output stored
+### folder_name = Folder name to store output
+
+#NOTE: Data will only be reproducible for same n_threads value
+registerDoParallel()
+#UGA vs FSU - Orange Bowl 2023
+registerDoRNG(seed=633)
+
+Execute_Driver_File_Main(full_driver=full_driver, 
+                         pre_r_mc_parms=pre_r_mc_parms, 
+                         do_par=TRUE, 
+                         n_threads=5,
+                         path=data_path, 
+                         folder_name=Get_Export_File_Name(path=data_path, 
+                                                          prefix="run_", 
+                                                          file_suffix=""))
+```
+
+
+```{r Conduct Inference}
+# Conduct Inference on Simulations Run Above
+### path = Folder with simulation output to analyze (should not end in "/")
+inference_output <- 
+  Conduct_Inference_for_Driver_Run(path=paste0(data_path, export_folder_name))
+# Save Inference Output
+saveRDS(object=inference_output,
+        file=paste0(analysis_path, export_folder_name))
+
+```
+
+
+
+
+
+
+
+
+
