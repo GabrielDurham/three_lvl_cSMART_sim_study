@@ -1,9 +1,10 @@
-<<<<<<< HEAD
 
-01_Programs/Scratch_Work/*
+# Material files to ignore
 00_Notes/Archive/*
 00_Notes/To_Do.R
-=======
+01_Programs/Scratch_Work/*
+
+>>>>>>> 893df8768b1ce83a2d050a224a1c1e6dfb8efd67
 # History files
 .Rhistory
 .Rapp.history
