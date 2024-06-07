@@ -1,3 +1,8 @@
+# Material files to ignore
+00_Notes/Archive/*
+00_Notes/To_Do.R
+01_Programs/Scratch_Work/*
+
 # History files
 .Rhistory
 .Rapp.history
