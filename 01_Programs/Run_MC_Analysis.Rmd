@@ -20,10 +20,8 @@ source(file="Preamble.R")
 source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
 # Pull in functions for pre-response MC simulations
 source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
-# Pull in functions for error distribution generation
-source(file=paste0(helper_funcs_path, "Derive_Error_Distributions.R"))
 # Pull in functions for collecting all simulation parameters
-source(file=paste0(helper_funcs_path, "Generate_All_Simulation_Parameters.R"))
+source(file=paste0(helper_funcs_path, "Derive_Sim_Parameters.R"))
 # Pull in functions for data simulation
 source(file=paste0(helper_funcs_path, "Simulate_SMART_Data.R"))
 # Pull in functions for model fitting
@@ -52,8 +50,10 @@ full_driver <- Read_Driver_File(path=paste0(notes_path, "Driver_Three_Level_Simu
 
 ```{r Read in Conditional Parameters}
 # Read in Conditional Parameters
-pre_r_mc_parms <- Import_Pre_R_MC_Results(path=pre_r_param_path, 
-                                          prefix="parameters_")
+pre_r_mc_parms <- 
+  Import_Pre_R_MC_Results(path=pre_r_param_path, 
+                          pre_r_marg_parms=full_driver[["var_parms_pre_r"]],
+                          prefix="parameters_")
 ```
 
 

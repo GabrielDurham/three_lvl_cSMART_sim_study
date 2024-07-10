@@ -16,10 +16,8 @@ source(file="Preamble.R")
 source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
 # Pull in functions for pre-response MC simulations
 source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
-# Pull in functions for error distribution generation
-source(file=paste0(helper_funcs_path, "Derive_Error_Distributions.R"))
 # Pull in functions for collecting all simulation parameters
-source(file=paste0(helper_funcs_path, "Generate_All_Simulation_Parameters.R"))
+source(file=paste0(helper_funcs_path, "Derive_Sim_Parameters.R"))
 # Pull in functions for data simulation
 source(file=paste0(helper_funcs_path, "Simulate_SMART_Data.R"))
 # Pull in functions for consistency checking
@@ -52,16 +50,18 @@ pre_r_mc_parms <- Import_Pre_R_MC_Results(path=pre_r_param_path,
 
 
 ```{r Get Driver Parms for Distribution Check}
+# UGA vs FSU - 2023 Orange Bowl
+set.seed(633)
 # Get Driver Parms for Distribution Check
 check_driver_parms <- Process_Driver_Row_for_Check(driver=full_driver[["driver"]], 
                                                    sim_label="test-small-n-20",
                                                    cluster_size=2, 
                                                    n_clusters=150000)
-check_sim_parms <- Obtain_All_Sim_Params(driver_parms=check_driver_parms, 
-                                         cp_settings_df=full_driver[["cp_settings"]],
-                                         pre_r_marg_parms=full_driver[["var_parms_pre_r"]], 
-                                         pre_r_cond_var_parms=pre_r_mc_parms, 
-                                         post_r_var_parms=full_driver[["var_parms_post_r"]])
+check_sim_parms <- Derive_Sim_Parms(driver_parms=check_driver_parms, 
+                                    cp_settings_df=full_driver[["cp_settings"]],
+                                    pre_r_marg_parms=full_driver[["var_parms_pre_r"]], 
+                                    pre_r_cond_parms=pre_r_mc_parms, 
+                                    post_r_var_parms=full_driver[["var_parms_post_r"]])
 ```
 
 ```{r Simulate Data}

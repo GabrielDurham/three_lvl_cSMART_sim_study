@@ -31,6 +31,8 @@
 ####                  error distributions as well as outcome distributions
 ####                  Also changed output to use cond_param_setting_pre_r instead
 ####                  of sim_id (didn't seem like the change took last time)
+####        18 JUN 2024 (GJD) - Changed name of Expand_Driver_File() to 
+####                  Expand_Driver_File_Pre_R()
 
 
 # Expand Driver File
@@ -38,7 +40,7 @@
 ## expand the file so there's a row for each unique simulation setting
 ### raw_driver_row = Row of raw driver file
 #### Returns expanded driver file with one row for each simulation setting
-Expand_Driver_File <- function(raw_driver_file){
+Expand_Driver_File_Pre_R <- function(raw_driver_file){
   #Columns that can contain lists
   list_columns <- c("sample_sizes")
   static_data <- raw_driver_file[, !(names(raw_driver_file)%in%list_columns)]
@@ -584,7 +586,7 @@ Execute_Driver_Rows_Pre_R <- function(driver_rows){
 ###             Note: Parallelization done using doRNG package, ensuring
 ###                   replicability with respect to random seed
 Execute_Raw_Driver_File_Pre_R <- function(raw_driver, do_par=FALSE, n_threads=1){
-  driver <- Expand_Driver_File(raw_driver)
+  driver <- Expand_Driver_File_Pre_R(raw_driver)
   # Only run settings without stored data
   driver <- driver[is.na(driver$stored_run),]
   # Make sure not to have more threads than rows

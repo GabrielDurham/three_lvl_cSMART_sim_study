@@ -18,7 +18,9 @@
 #### EDITS:         20 MAY 2024 - Added functionality to Execute_Driver_File_Main()
 ####                              so it only simulates rows with run_simulation==1
 ####                              (And made it save the driver)
-
+####                08 JUL 2024 - Replaced call of Obtain_All_Sim_Params() to
+####                              a Derive_Sim_Parms() call
+####                              Also stored pre_r_mc_parms in output
 
 
 
@@ -252,7 +254,7 @@ Fit_Model <- function(driver_parms, fit_number, fit_settings_df, sim_data, crit_
 
 # Run a Single Iteration of a Driver Row
 ### driver_parms = Output of Process_Driver_Row_Main() function
-### sim_parms = Output of Obtain_All_Sim_Params() function
+### sim_parms = Output of Derive_Sim_Parms() function
 ### fit_settings_df = Dataframe of driver sheet of model fit settings
 ### alt_fit_settings_dfs = List of dataframe of driver sheets of alternate model 
 ###                        fit settings (indexed by alternate fit types)
@@ -290,7 +292,7 @@ Run_Single_Iteration <- function(driver_parms, sim_parms, fit_settings_df,
 
 # Run a Multiple Iterations of a Driver Row
 ### driver_parms = Output of Process_Driver_Row_Main() function
-### sim_parms = Output of Obtain_All_Sim_Params() function
+### sim_parms = Output of Derive_Sim_Parms() function
 ### fit_settings_df = Dataframe of driver sheet of model fit settings
 ### alt_fit_settings_dfs = List of dataframe of driver sheets of alternate model 
 ###                        fit settings (indexed by alternate fit types)
@@ -323,11 +325,11 @@ Run_Multiple_Iterations <- function(driver_parms, sim_parms, fit_settings_df,
 Execute_Driver_Row <- function(full_driver, driver_rowname, pre_r_mc_parms,
                                do_par=FALSE, n_threads=1) {
   driver_parms <- Process_Driver_Row_Main(driver_row=full_driver[["driver"]][driver_rowname,])
-  sim_parms <- Obtain_All_Sim_Params(driver_parms=driver_parms,
-                                     cp_settings_df=full_driver[["cp_settings"]],
-                                     pre_r_marg_parms=full_driver[["var_parms_pre_r"]],
-                                     pre_r_cond_var_parms=pre_r_mc_parms,
-                                     post_r_var_parms=full_driver[["var_parms_post_r"]])
+  sim_parms <- Derive_Sim_Parms(driver_parms=driver_parms,
+                                cp_settings_df=full_driver[["cp_settings"]],
+                                pre_r_marg_parms=full_driver[["var_parms_pre_r"]],
+                                pre_r_cond_parms=pre_r_mc_parms, 
+                                post_r_var_parms=full_driver[["var_parms_post_r"]])
   Output <- NULL
   Output[["driver_parms"]] <- driver_parms
   Output[["sim_parms"]] <- sim_parms
@@ -393,6 +395,8 @@ Execute_Driver_File_Main <- function(full_driver, pre_r_mc_parms,
   }
   saveRDS(object=full_driver, 
           file=paste0(path, folder_name, "/Driver"))
+  saveRDS(object=pre_r_mc_parms, 
+          file=paste0(path, folder_name, "/Pre_R_MC_Parms"))
 }
 
 

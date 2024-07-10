@@ -19,9 +19,8 @@
 ####                      simulation runs with no covariates
 ####                04 JUN 2024 (GJD) - Changed [["var_parms"]] label of 
 ####                      Obtain_All_Sim_Params() output to [["target_var"]]
-####                07 JUL 2024 (GJD) - Cleaned up code to incorporate new
-####                      Derive_Sim_Parms() function (replaced 
-####                      Obtain_All_Sim_Params())
+
+
 
 
 
@@ -47,17 +46,20 @@ Randomize_DTR_n_i <- function(driver_parms) {
       below_min_dtr_rep <- (min(dtr_representations)<driver_parms[["min_dtr_obs"]])
     }
   }
-  size_probs <- driver_parms[["p_cluster_size"]]
+  if (all(is.na(driver_parms[["p_cluster_size"]]))) {
+    size_probs <- rep(1/length(driver_parms[["cluster_sizes"]]), 
+                      length(driver_parms[["cluster_sizes"]]))
+  } else {size_probs <- driver_parms[["p_cluster_size"]]}
   
   # If only one cluster size then just produce the vector without sampling
   if (length(driver_parms[["cluster_sizes"]])==1) {
     cluster_sizes <- rep(x=driver_parms[["cluster_sizes"]][1], 
                          times=driver_parms[["n_clusters"]])
   } else { 
-    cluster_sizes <- sample(x=driver_parms[["cluster_sizes"]],
-                            size=driver_parms[["n_clusters"]], 
-                            replace=TRUE, 
-                            prob=size_probs)
+  cluster_sizes <- sample(x=driver_parms[["cluster_sizes"]],
+                          size=driver_parms[["n_clusters"]], 
+                          replace=TRUE, 
+                          prob=size_probs)
   }
   Output <- data.frame(cluster_id=(1:driver_parms[["n_clusters"]]),
                        n=cluster_sizes,
@@ -65,32 +67,80 @@ Randomize_DTR_n_i <- function(driver_parms) {
   return(Output)
 }
 
+
+
+
+# Simulate Pre-Response Errors, Mean Deviations, and Response
+### P_1 = P_1 coefficient
+### error_variance = Joint [e_0, e_1] variance
+### response_function = Function used to simulate response given pre-response
+###                     Only argument can be centered outcome trajectories
+Sim_Pre_R_EYR_Single_cluster <- function(P_1, error_variance, response_function){
+  #Simulate model errors - Function from Pre_R_Cond_Param_Sim.R code
+  model_errors <- Generate_Model_Errors_Pre_R(error_variance)
+  #Simulate outcome trajectories (without mean components)
+  #Function from Pre_R_Cond_Param_Sim.R code
+  centered_outcomes <- Generate_Outcome_Devs_Pre_R(model_errors, list(P_1=P_1))
+  #Generate response
+  response <- response_function(centered_outcomes)
+  
+  Output <- NULL
+  Output[["Y"]] <- centered_outcomes
+  Output[["e"]] <- model_errors
+  Output[["R"]] <- response
+  
+  return(Output)
+}
+
+
+
+
 # Simulate Pre-Response Marginal Deviations and Response for a Single Cluster
+### driver_parms = Output of Process_Driver_Row_Main() function
 ### sim_parms = Output of Obtain_All_Sim_Params() function
 ### dtr = Embedded DTR of cluster
 ### n_i = Cluster size
-Simulate_Y_0_1_R_One_Cluster <- function(driver_parms, sim_parms, dtr, n_i) {
-  cluster_parms <- sim_parms[[paste0("n_", n_i)]][[dtr]]
-  Sigma_0_1 <- cluster_parms[["sim_parms"]][["Sigma_01"]]
-  e_0_1 <- mvrnorm(n = 1, mu=integer(2*n_i), Sigma=Sigma_0_1)
-  e_0 <- e_0_1[(1:n_i)]
-  e_1 <- e_0_1[((n_i+1):(2*n_i))]
-  mean_helper_parms <- cluster_parms[["sim_parms"]][["mean_helper_parms"]]
-  P_1 <- cluster_parms[["sim_parms"]][["P"]][["R"]][1]
-  y_0 <- mean_helper_parms[["t_0"]] + e_0
-  y_1 <- mean_helper_parms[["t_1"]] + P_1*y_0 + e_1
+Sim_Pre_R_Marg_Devs_R_One_Cluster <- function(driver_parms, sim_parms, dtr, n_i) {
+  # Obtain relevant simulation parameters
+  coefs <- sim_parms[[paste0("n_", n_i)]][[dtr]][["coefs"]]
+  # Grab response function
+  R_function <- sim_parms[[paste0("n_", n_i)]][[dtr]][["response_function"]]
   
-  #Grab centered outcomes and response
-  y_0_c <- e_0
-  y_1_c <- P_1*e_0 + e_1
-  response <- 
-    cluster_parms[["response_function"]](list(Y_0=y_0_c, Y_1=y_1_c))
+  # Coax data from sim_parms into format to use in Simulate_Outcomes_01_and_Response
+  # function from Pre_R_Cond_Param_Sim.R code
+  # Note that P_1 is same for R and NR
   
-  Output <- list(Y=list(Y_0=y_0, Y_1=y_1), 
-                 e=list(e_0=e_0, e_1=e_1),
-                 R=response)
+  Output <- Sim_Pre_R_EYR_Single_cluster(P_1=coefs[["P_vec"]][["R"]][1], 
+                                         error_variance=coefs[["Sigma_01"]], 
+                                         response_function=R_function)
   return(Output)
 }
+
+
+
+# Calculate the Marginal Model Contribution to Y0/Y1 - I.e., No Covariates/Errors
+### sim_parms = Output of Obtain_All_Sim_Params() function
+### dtr = Embedded dtr assignment for cluster
+### n_i = Size of cluster
+### devs = List of Y_0 deviations and Y_1 deviations [["Y_0"]] and [["Y_1"]]
+Calculate_Marg_Y0_Y1 <- function(sim_parms, dtr, n_i) {
+  mean_parms <- sim_parms[[paste0("n_", n_i)]][[dtr]][["mean_parms"]]
+  
+  gamma_0 <- mean_parms[["gamma_0"]]
+  gamma_1 <- mean_parms[["gamma_1"]]
+  gamma_2 <- mean_parms[["gamma_2"]]
+  a_1 <- sim_parms[[paste0("n_", n_i)]][[dtr]][["dtr"]][["a_1"]]
+  # Could just pull from cp_settings but likely less tedious to pull that data
+  # in here.
+  y_0_mean <- gamma_0
+  y_1_mean <- gamma_0 + gamma_1 + gamma_2*a_1
+  
+  Output <- NULL
+  Output[["Y_0"]] <- y_0_mean
+  Output[["Y_1"]] <- y_1_mean
+  return(Output)
+}
+
 
 
 # Simulate a Set of Clusters and their Pre-Response Outcomes
@@ -119,19 +169,25 @@ Sim_Pre_R_Data <- function(driver_parms, sim_parms) {
       cluster_id <- cluster_assignments[row, "cluster_id"]
       n_i <- cluster_assignments[row, "n"]
       d_i <- cluster_assignments[row, "dtr"]
-      cluster_data <- Simulate_Y_0_1_R_One_Cluster(sim_parms=sim_parms, 
-                                                   dtr=d_i, 
-                                                   n_i=n_i)
-      cluster_y <- cluster_data[["Y"]]
+      cluster_data <- Sim_Pre_R_Marg_Devs_R_One_Cluster(sim_parms=sim_parms,
+                                                        dtr=d_i,
+                                                        n_i=n_i)
+      cluster_devs <- cluster_data[["Y"]]
       cluster_errs <- cluster_data[["e"]]
-      cluster_r <- cluster_data[["R"]]
       
+      cluster_r <- cluster_data[["R"]]
       cluster_assignments[row, "r"] <- cluster_r
       dtr_structure <- sim_parms[[paste0("n_", n_i)]][[d_i]][["dtr"]]
       cluster_assignments[row, "a_1"] <- dtr_structure[["a_1"]]
       cluster_assignments[row, "a_2r"] <- dtr_structure[["a_2r"]]
       cluster_assignments[row, "a_2nr"] <- dtr_structure[["a_2nr"]]
       
+      marginal_y <- Calculate_Marg_Y0_Y1(sim_parms=sim_parms, 
+                                         dtr=d_i, 
+                                         n_i=n_i)
+      
+      cluster_y_0 <- marginal_y[["Y_0"]] + cluster_devs[["Y_0"]]
+      cluster_y_1 <- marginal_y[["Y_1"]] + cluster_devs[["Y_1"]]
       
       # Identify cluster path
       cluster_path <- ifelse(cluster_r==1,
@@ -145,8 +201,8 @@ Sim_Pre_R_Data <- function(driver_parms, sim_parms) {
       pre_r_outcomes <- rbind(pre_r_outcomes,
                               data.frame(cluster_id=rep(cluster_id, n_i),
                                          person_id=(1:n_i),
-                                         y_0=cluster_y[["Y_0"]],
-                                         y_1=cluster_y[["Y_1"]],
+                                         y_0=cluster_y_0,
+                                         y_1=cluster_y_1,
                                          e_0=cluster_errs[["e_0"]],
                                          e_1=cluster_errs[["e_1"]],
                                          r=rep(cluster_r, n_i)))
@@ -166,46 +222,49 @@ Sim_Pre_R_Data <- function(driver_parms, sim_parms) {
 ### cluster_id = ID of cluster whose outcomes to simulate
 ### sim_parms = Output of Obtain_All_Sim_Params() function
 ### pre_r_data = Output of Sim_Pre_R_Data() function
-Sim_Y2_One_Cluster_Proto <- function(cluster_id, sim_parms, pre_r_data) {
+Sim_Y2_Single_Cluster_Proto <- function(cluster_id, sim_parms, pre_r_data) {
   #Load in cluster level information
   cluster_lvl_data <- 
     pre_r_data[["cluster_data"]][pre_r_data[["cluster_data"]]$cluster_id==cluster_id,]
   d_i <- cluster_lvl_data$dtr
   n_i <- cluster_lvl_data$n
-  # a_1 <- cluster_lvl_data$a_1
-  # a_2nr <- cluster_lvl_data$a_2nr
+  a_1 <- cluster_lvl_data$a_1
+  a_2nr <- cluster_lvl_data$a_2nr
   r_i <- cluster_lvl_data$r
   r_lab <- ifelse(r_i==1, "R", "NR")
   
-  # Load in cluster level simulation parameters
-  cluster_sim_parms <- sim_parms[[paste0("n_", n_i)]][[d_i]][["sim_parms"]]
-  P <- cluster_sim_parms[["P"]][[r_lab]]
-  Sigma_2 <- cluster_sim_parms[["Sigma_2"]][[r_lab]]
-  # p_r <- sim_parms[[paste0("n_", n_i)]][[d_i]][["dist"]][["other_parms"]][["marg"]][["p_r]]
-  mean_helper_parms <- cluster_sim_parms[["mean_helper_parms"]]
+  #Load in cluster level simulation parameters
+  cluster_parms <- sim_parms[[paste0("n_", n_i)]][[d_i]]
+  P <- cluster_parms[["coefs"]][["P_vec"]][[r_lab]]
+  Sigma_2 <- cluster_parms[["coefs"]][["Sigma_2"]][[r_lab]]
+  p_r <- cluster_parms[["target_var"]][["pre_r"]][["marg"]][["p_r"]]
   
-  # Generate Errors
-  e_2 <- mvrnorm(n = 1, mu=integer(n_i), Sigma=Sigma_2)
+  gamma <- NULL
+  for (i in (0:6)) {
+    gamma[[toString(i)]] <- cluster_parms[["mean_parms"]][[paste0("gamma_",i)]]
+  }
+  lambda <- NULL
+  for (i in (1:2)) {
+    lambda[[toString(i)]] <- cluster_parms[["mean_parms"]][[paste0("lambda_",i)]]
+  }
   
   #Pull relevant outcome information
   outcomes <- 
     pre_r_data[["outcomes"]][pre_r_data[["outcomes"]]$cluster_id==cluster_id,]
+  e_2 <- mvrnorm(n = 1, mu=integer(n_i), Sigma=Sigma_2)
   
-  # Created the helper parms to avoid some of this repeated calculation
-  Output <- mean_helper_parms[["t_2"]][[r_lab]] + 
-    # (1 - P[2] - P[4])*gamma[["0"]] + 
-    # (1 - P[4])*(gamma[["1"]] + gamma[["2"]]*a_1) + 
-    # (gamma[["3"]] + gamma[["4"]]*a_1) + 
+  Output <- (1 - P[2] - P[4])*gamma[["0"]] + 
+    (1 - P[4])*(gamma[["1"]] + gamma[["2"]]*a_1) + 
+    (gamma[["3"]] + gamma[["4"]]*a_1) + 
     P[2]*outcomes$y_0 + 
     P[3]*mean(outcomes$e_0) + 
     P[4]*outcomes$y_1 + 
     P[5]*mean(outcomes$e_1) + 
-    # ( (gamma[["5"]] + gamma[["6"]]*a_1)*a_2nr )*( (1-r_i)/(1-p_r) ) + 
-    # (lambda[["1"]] + lambda[["2"]]*a_1)*(r_i-p_r) + 
+    ( (gamma[["5"]] + gamma[["6"]]*a_1)*a_2nr )*( (1-r_i)/(1-p_r) ) + 
+    (lambda[["1"]] + lambda[["2"]]*a_1)*(r_i-p_r) + 
     e_2
   return(Output)
 }
-
 
 
 # Simulate Post-Response Outcomes
@@ -218,11 +277,10 @@ Sim_Post_R_Outcomes <- function(driver_parms, sim_parms, pre_r_data) {
   temp_output$y_2 <- NA
   for (id in unique(temp_output$cluster_id)) {
     if (driver_parms[["SMART_structure"]]=="prototypical") {
-      cluster_y_2 <- Sim_Y2_One_Cluster_Proto(cluster_id=id, 
-                                              sim_parms=sim_parms, 
-                                              pre_r_data=pre_r_data)
+      cluster_y_2 <- Sim_Y2_Single_Cluster_Proto(cluster_id=id, 
+                                                 sim_parms=sim_parms, 
+                                                 pre_r_data=pre_r_data)
     }
-    
     temp_output[temp_output$cluster_id==id, "y_2"] <- cluster_y_2
   }
   Output <- temp_output
@@ -250,8 +308,6 @@ Structure_Wide_Output <- function(wide_output){
   rownames(Output) <- 1:nrow(Output)
   return(Output)
 }
-
-
 
 
 # Simulate a Single Covariate
@@ -324,6 +380,7 @@ Add_All_Covariates <- function(in_data, driver_parms) {
 }
 
 
+
 # Simulate Single SMART According to Driver Specifications
 ### driver_parms = Output of Process_Driver_Row_Main() function
 ### sim_parms = Output of Obtain_All_Sim_Params() function
@@ -361,3 +418,7 @@ Sim_SMART_Data <- function(driver_parms, sim_parms) {
   
   return(Output)
 }
+
+
+
+
