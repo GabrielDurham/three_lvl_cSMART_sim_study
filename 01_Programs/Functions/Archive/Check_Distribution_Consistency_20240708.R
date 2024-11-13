@@ -29,9 +29,7 @@
 
 #### DATE CREATED:  04 JUN 2024
 #### PROGRAMMER:    GABRIEL DURHAM (GJD)
-#### EDITS:         07 JUL 2024 (GJD) - Cleaned up code to incorporate new
-####                      Derive_Sim_Parms() function (replaced 
-####                      Obtain_All_Sim_Params())
+#### EDITS:         
 
 
 # Process a Driver Row for Distribution Check
@@ -49,6 +47,7 @@ Process_Driver_Row_for_Check <- function(driver, sim_label, cluster_size,
   Output <- Process_Driver_Row_Main(driver_row=driver_row)
   return(Output)
 }
+
 
 # Make Simulated Data Wide (One Row Per Cluster)
 ### sim_data = Sim_SMART_Data() output
@@ -90,7 +89,7 @@ Make_Sim_Data_Wide <- function(sim_data, driver_parms) {
 
 # Simulate SMART Data and Convert to Wide Format
 ### driver_parms = Output of Process_Driver_Row_Main() function
-### sim_parms = Output of Derive_Sim_Parms() function
+### sim_parms = Output of Obtain_All_Sim_Params() function
 Sim_SMART_Data_Wide <- function(driver_parms, sim_parms) {
   sim_data_long <- Sim_SMART_Data(driver_parms=driver_parms, 
                                   sim_parms=sim_parms)
@@ -98,27 +97,46 @@ Sim_SMART_Data_Wide <- function(driver_parms, sim_parms) {
   return(Output)
 }
 
+
 # Grab the Target Variance for a Single Setting
 ## E.g., one conditional variance or marginal variance
-### var_parms = Portion of Derive_Sim_Parms() output
-###         containing desired variance components
+### pre_r_var_comps = Portion of Obtain_All_Sim_Params() output containing 
+###                   applicable pre-response variance components
+### post_r_var_comps = Portion of Obtain_All_Sim_Params() output containing 
+###                    applicable post-response variance components
 ### cluster_size = Individuals in a cluster
-Grab_Target_Var_Single_Setting <- function(var_parms, cluster_size) {
+Grab_Target_Var_Single_Setting <- function(pre_r_var_comps, post_r_var_comps,
+                                           cluster_size) {
   # Hard code times
   times <- c(0,1,2)
+  pre_r_times <- c(0,1)
+  post_r_times <- c(2)
   
   #Grab variance components for diagonal and off-diagonal blocks
   d_block <- matrix(NA, nrow=3, ncol=3)
   od_block <- matrix(NA, nrow=3, ncol=3)
   for (t_1 in times) {
-    d_block[t_1+1, t_1+1] <- var_parms[[paste0("sigma2_", t_1)]]
-    od_block[t_1+1, t_1+1] <- var_parms[[paste0("rho_", t_1)]]
+    if (t_1 %in% pre_r_times) {
+      d_block[t_1+1, t_1+1] <- pre_r_var_comps[[paste0("sigma2_", t_1)]]
+      od_block[t_1+1, t_1+1] <- pre_r_var_comps[[paste0("rho_", t_1)]]
+    } else if (t_1 %in% post_r_times) {
+      d_block[t_1+1, t_1+1] <- post_r_var_comps[[paste0("sigma2_", t_1)]]
+      od_block[t_1+1, t_1+1] <- post_r_var_comps[[paste0("rho_", t_1)]]
+    }
     if (t_1<max(times)) {for (t_2 in times[times>t_1]) {
-      d_block[t_1+1, t_2+1] <- var_parms[[paste0("phi_", t_1, t_2)]]
-      d_block[t_2+1, t_1+1] <- var_parms[[paste0("phi_", t_1, t_2)]]
-      
-      od_block[t_1+1, t_2+1] <- var_parms[[paste0("rho_", t_1, t_2)]]
-      od_block[t_2+1, t_1+1] <- var_parms[[paste0("rho_", t_1, t_2)]]
+      if (t_2 %in% pre_r_times) {
+        d_block[t_1+1, t_2+1] <- pre_r_var_comps[[paste0("phi_", t_1, t_2)]]
+        d_block[t_2+1, t_1+1] <- pre_r_var_comps[[paste0("phi_", t_1, t_2)]]
+        
+        od_block[t_1+1, t_2+1] <- pre_r_var_comps[[paste0("rho_", t_1, t_2)]]
+        od_block[t_2+1, t_1+1] <- pre_r_var_comps[[paste0("rho_", t_1, t_2)]]
+      } else {
+        d_block[t_1+1, t_2+1] <- post_r_var_comps[[paste0("phi_", t_1, t_2)]]
+        d_block[t_2+1, t_1+1] <- post_r_var_comps[[paste0("phi_", t_1, t_2)]]
+        
+        od_block[t_1+1, t_2+1] <- post_r_var_comps[[paste0("rho_", t_1, t_2)]]
+        od_block[t_2+1, t_1+1] <- post_r_var_comps[[paste0("rho_", t_1, t_2)]]
+      }
     }}
   }
   # Expand blocks into a full variance matrix
@@ -138,7 +156,7 @@ Grab_Target_Var_Single_Setting <- function(var_parms, cluster_size) {
 }
 
 # Grab Target Conditional and Marginal Distributions
-### sim_parms = Output of Derive_Sim_Parms() function
+### sim_parms = Output of Obtain_All_Sim_Params() function
 ### cluster_size = Number of units in cluster
 Grab_Target_Dists <- function(sim_parms, cluster_size) {
   # Hard code times
@@ -147,29 +165,36 @@ Grab_Target_Dists <- function(sim_parms, cluster_size) {
   temp_output <- NULL
   for (dtr in names(sim_parms_n_i)) {
     sim_parms_dtr_n_i <- sim_parms_n_i[[dtr]]
-    dist_dtr_n_i <- sim_parms_dtr_n_i[["dist"]]
+    
     # Grab means
     marg_means <- c()
     cond_means <- list(R=c(), NR=c())
     
     for (t in times) {
-      marg_means <- c(marg_means, 
-                      dist_dtr_n_i[["marg"]][["mean"]][[paste0("mean_", t)]])
+      marg_means <- 
+        c(marg_means, 
+          sim_parms_dtr_n_i[["target_means"]][["marg"]][[paste0("mean_", t)]])
       cond_means[["R"]] <- 
         c(cond_means[["R"]], 
-          dist_dtr_n_i[["cond"]][["R"]][["mean"]][[paste0("mean_", t)]])
+          sim_parms_dtr_n_i[["target_means"]][["cond"]][["R"]][[paste0("delta_", t)]])
       cond_means[["NR"]] <- 
         c(cond_means[["NR"]], 
-          dist_dtr_n_i[["cond"]][["NR"]][["mean"]][[paste0("mean_", t)]])
+          sim_parms_dtr_n_i[["target_means"]][["cond"]][["NR"]][[paste0("delta_", t)]])
     }
     # Grab variances
+    pre_r_target_var_parms <- sim_parms_dtr_n_i[["target_var"]][["pre_r"]]
+    post_r_target_var_parms <- sim_parms_dtr_n_i[["target_var"]][["post_r"]]
+    
     marg_var <- 
-      Grab_Target_Var_Single_Setting(var_parms=dist_dtr_n_i[["marg"]][["var"]],
+      Grab_Target_Var_Single_Setting(pre_r_var_comps=pre_r_target_var_parms[["marg"]], 
+                                     post_r_var_comps=post_r_target_var_parms[["marg"]],
                                      cluster_size=cluster_size)
     cond_var <- list(
-      R=Grab_Target_Var_Single_Setting(var_parms=dist_dtr_n_i[["cond"]][["R"]][["var"]],
+      R=Grab_Target_Var_Single_Setting(pre_r_var_comps=pre_r_target_var_parms[["cond"]][["R"]], 
+                                       post_r_var_comps=post_r_target_var_parms[["cond"]][["R"]],
                                        cluster_size=cluster_size),
-      NR=Grab_Target_Var_Single_Setting(var_parms=dist_dtr_n_i[["cond"]][["NR"]][["var"]],
+      NR=Grab_Target_Var_Single_Setting(pre_r_var_comps=pre_r_target_var_parms[["cond"]][["NR"]], 
+                                        post_r_var_comps=post_r_target_var_parms[["cond"]][["NR"]],
                                         cluster_size=cluster_size)
     )
     temp_output[[dtr]] <- list(
@@ -188,8 +213,10 @@ Grab_Target_Dists <- function(sim_parms, cluster_size) {
 # Calculate Empirical Distributions (Cond/Marg) for all DTRs in a Prototypical SMART
 ### driver_parms = Output of Process_Driver_Row_Main() function
 ### wide_data = Output of Make_Sim_Data_Wide() function
+### sim_parms = Output of Obtain_All_Sim_Params() function
 ### cluster_size = Number of units in cluster
-Grab_Emp_Dists_Proto <- function(wide_data, driver_parms, cluster_size) {
+Grab_Emp_Dists_Proto <- function(wide_data, driver_parms, sim_parms, 
+                                 cluster_size) {
   # Hard-code times
   times <- c(0,1,2)
   # Calculate weights
@@ -252,11 +279,13 @@ Grab_Emp_Dists_Proto <- function(wide_data, driver_parms, cluster_size) {
 # Calculate Empirical Distributions (Cond/Marg) for all DTR for Simulated Data
 ### driver_parms = Output of Process_Driver_Row_Main() function
 ### wide_data = Output of Make_Sim_Data_Wide() function
+### sim_parms = Output of Obtain_All_Sim_Params() function
 ### cluster_size = Number of units in cluster
-Grab_Emp_Dists <- function(driver_parms, wide_data, cluster_size) {
+Grab_Emp_Dists <- function(driver_parms, wide_data, sim_parms, cluster_size) {
   if (driver_parms[["SMART_structure"]]=="prototypical") {
     Output <- Grab_Emp_Dists_Proto(wide_data=wide_data, 
                                    driver_parms=driver_parms, 
+                                   sim_parms=sim_parms, 
                                    cluster_size=cluster_size)
   }
   return(Output)
@@ -268,7 +297,7 @@ Grab_Emp_Dists <- function(driver_parms, wide_data, cluster_size) {
 # Check Empirical/Target Distribution Consistency
 ### driver_parms = Output of Process_Driver_Row_Main() function
 ### wide_data = Output of Make_Sim_Data_Wide() function
-### sim_parms = Output of Derive_Sim_Parms() function
+### sim_parms = Output of Obtain_All_Sim_Params() function
 ### cluster_size = Number of units in cluster
 Check_Distribution_Consistency <- function(wide_data, driver_parms, sim_parms, 
                                            cluster_size) {
@@ -276,7 +305,8 @@ Check_Distribution_Consistency <- function(wide_data, driver_parms, sim_parms,
   times <- c(0,1,2)
   # Pull empirical and target distributions
   emp_dists_all <- Grab_Emp_Dists(driver_parms=driver_parms, 
-                                  wide_data=wide_data,
+                                  wide_data=wide_data, 
+                                  sim_parms=sim_parms, 
                                   cluster_size=cluster_size)
   target_dists_all <- Grab_Target_Dists(sim_parms=sim_parms, 
                                         cluster_size=cluster_size)
@@ -363,6 +393,7 @@ Format_Consistency_Single_Setting <- function(consistency_check_dtr, setting,
     diffs <- consistency_check_dtr[["diffs"]][["cond"]][["NR"]]
     n <- consistency_check_dtr[["n"]][["cond"]][["NR"]]
   }
+  
   mean_emp <- format(round(emp_dists[["mean"]][["parms"]], digits), nsmall=digits)
   mean_tgt <- format(round(tgt_dists[["means"]], digits), nsmall=digits)
   mean_diff <- format(round(diffs[["mean"]], digits), nsmall=digits)

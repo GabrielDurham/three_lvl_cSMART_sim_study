@@ -2,7 +2,17 @@
 # Material files to ignore
 00_Notes/Archive/*
 00_Notes/To_Do.R
+00_Notes/Sim_Parms_From_ASIC/*
+00_Notes/Consistency_Check/Archive/*
+00_Notes/Pre_R_MC_Parameters/Archive/*
 01_Programs/Scratch_Work/*
+01_Programs/*.html
+01_Programs/*.tex
+01_Programs/Functions/Model_Fitting/function_v3.5_1_SCRATCH.R
+02_Data/*.zip
+03_Analysis/*.zip
+03_Analysis/*
+02_Data/*
 
 >>>>>>> 893df8768b1ce83a2d050a224a1c1e6dfb8efd67
 # History files

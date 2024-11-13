@@ -21,6 +21,12 @@
 ####                              data from multiple runs if specified in driver file
 ####        27 MAY 2024 (GJD) - Added Summarize_Emp_Data()
 ####        03 JUN 2024 (GJD) - Added outcome_prefix input to Summarize_Emp_Data()
+####        10 JUL 2024 (GJD) - Added functionality to Import_Pre_R_MC_Results()
+####                              to allow for centering errors
+####        01 AUG 2024 (GJD) - Dropped unnecessary columns in cp_settings driver
+####                              sheet
+####        10 SEP 2024 (GJD) - Fixed issue in processing driver file row where it didn't
+####                              read NAs correctly
 
 #Read in Driver File
 ### path = File location for driver file
@@ -43,6 +49,10 @@ Read_Driver_File <- function(path, driver_sheet="main",
                                                 col_names=TRUE))
   Output[["cp_settings"]] <- as.data.frame(read_xlsx(path=path, sheet=cp_sheet, 
                                                      col_names=TRUE))
+  #Don't store unnecessary cp_settings columns
+  cps_cols_to_drop <- c("Notes")
+  Output[["cp_settings"]] <- 
+    Output[["cp_settings"]][ , !names(Output[["cp_settings"]]) %in% cps_cols_to_drop]
   Output[["var_parms_pre_r"]] <- as.data.frame(read_xlsx(path=path, 
                                                          sheet=var_parm_pre_r_sheet, 
                                                          col_names=TRUE))
@@ -89,7 +99,6 @@ Get_Export_File_Name <- function(path, prefix, file_suffix=".xlsx"){
   } else {Output <- paste0(prefix, date_suffix, letters[n_existing_files], file_suffix)}
   return(Output)
 }
-
 # Import Pre-Response Monte Carlo Results
 ## Imports most recent version of results
 ### path = Path where past results are stored
@@ -97,7 +106,7 @@ Get_Export_File_Name <- function(path, prefix, file_suffix=".xlsx"){
 ### pre_r_marg_parms = Driver sheet of pre-response marginal parameters
 ###                     Sheet will specify stored run for given settings, if none
 ###                     then we assume it's in the most recent run
-Import_Pre_R_MC_Results <- function(path, prefix, pre_r_marg_parms=NULL) {
+Import_Pre_R_MC_Results <- function(path, prefix, pre_r_marg_parms=NULL, center=FALSE) {
   file_names <- list.files(path, pattern = paste0("^", prefix), all.files = TRUE)
   recent_file <- sort(file_names)[length(file_names)]
   
@@ -142,10 +151,37 @@ Import_Pre_R_MC_Results <- function(path, prefix, pre_r_marg_parms=NULL) {
     }
   }
   # Re-order and re-label rows
-  temp_output_r <- temp_output_r[order(temp_output_r$cond_param_setting_pre_r), ]
+  temp_output_r <- temp_output_r[order(temp_output_r$cond_param_setting_pre_r, 
+                                       temp_output_r$n_i), ]
   rownames(temp_output_r) <- (1:nrow(temp_output_r))
-  temp_output_nr <- temp_output_nr[order(temp_output_nr$cond_param_setting_pre_r), ]
+  temp_output_nr <- temp_output_nr[order(temp_output_nr$cond_param_setting_pre_r, 
+                                         temp_output_nr$n_i), ]
   rownames(temp_output_nr) <- (1:nrow(temp_output_nr))
+  
+  # Center MC errors so they average to zero
+  if (center) {
+    # Pull actual p_r to center, otherwise take empirical rate
+    if (!is.null(pre_r_marg_parms)) {
+      p_r <- merge(x=temp_output_r, 
+                   y=pre_r_marg_parms[,c("cond_param_setting_pre_r", "p_r")],
+                   by="cond_param_setting_pre_r", all.x=TRUE)$p_r
+    } else {
+      n_r <- temp_output_r$n_obs
+      n_nr <- temp_output_nr$n_obs
+      p_r <- n_r/(n_r+n_nr)
+    }
+    for (var in c("e_0", "e_1", "y_0", "y_1")) {
+      mean_lab <- paste0("mean_", var)
+      temp_output_r[[paste0("old_", mean_lab)]] <- temp_output_r[[mean_lab]]
+      temp_output_nr[[paste0("old_", mean_lab)]] <- temp_output_nr[[mean_lab]]
+      
+      center_var <- p_r*temp_output_r[[mean_lab]] + (1-p_r)*temp_output_nr[[mean_lab]]
+      
+      temp_output_r[[mean_lab]] <- temp_output_r[[mean_lab]]-center_var
+      temp_output_nr[[mean_lab]] <- temp_output_nr[[mean_lab]]-center_var
+    }
+  }
+  
   
   Output <- NULL
   Output[["R"]] <- temp_output_r
@@ -187,7 +223,7 @@ Process_Driver_Row_Main <- function(driver_row){
   Output[["cluster_sizes"]] <- eval(parse(text=driver_row[1,"cluster_sizes"]))
   
   # Default cluster size randomization probabilities are balanced
-  if (is.na(driver_row$p_cluster_size)) {
+  if (is.na(driver_row$p_cluster_size)[1]) {
     Output[["p_cluster_size"]] <- rep(1/length(Output[["cluster_sizes"]]),
                                       length(Output[["cluster_sizes"]]))
   } else {
@@ -195,7 +231,7 @@ Process_Driver_Row_Main <- function(driver_row){
   }
   
   # Default DTR assignment probabilities are balanced
-  if (is.na(driver_row$p_dtr)) {
+  if (is.na(driver_row$p_dtr)[1]) {
     if (driver_row$SMART_structure=="prototypical") {
       Output[["p_dtr"]] <- rep(0.25, 4)
     }

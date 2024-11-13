@@ -36,6 +36,8 @@
 ####                  the path-conditional t=2 means
 ####                04 JUN 2024 (GJD): Added target mean to output and changed
 ####                  "var_parms" output label to "target_var"
+####        18 JUN 2024 (GJD) - Changed name of Expand_Driver_File() to 
+####                  Expand_Driver_File_Pre_R()
 
 
 
@@ -244,7 +246,7 @@ Calculate_Marg_Var_Post_R_DTR_Prototypical <- function(mean_parms, univ_sim_parm
 Generate_Response_Function_DTR_n <- function(pre_r_marg_parms, univ_sim_parms_dtr_n_i) {
   # Use code from Pre_R_Cond_Param_Sim.R file - Uses pre_r_marg_parms as driver
   # Builds response function taking mean outcome deviations as sole input
-  exp_marg_parms <- Expand_Driver_File(raw_driver_file=pre_r_marg_parms)
+  exp_marg_parms <- Expand_Driver_File_Pre_R(raw_driver_file=pre_r_marg_parms)
   pre_r_var_setting <- 
     univ_sim_parms_dtr_n_i[["var_parms"]][["pre_r"]][["marg"]][["cond_param_setting_pre_r"]]
   n_i <- univ_sim_parms_dtr_n_i[["var_parms"]][["pre_r"]][["marg"]][["n_i"]]

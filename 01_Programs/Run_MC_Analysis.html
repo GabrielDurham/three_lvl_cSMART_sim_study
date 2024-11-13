@@ -1650,10 +1650,8 @@ source(file=&quot;Preamble.R&quot;)</code></pre>
 source(file=paste0(helper_funcs_path, &quot;General_Data_Maintenance.R&quot;))
 # Pull in functions for pre-response MC simulations
 source(file=paste0(helper_funcs_path, &quot;Pre_R_Cond_Param_Sim.R&quot;))
-# Pull in functions for error distribution generation
-source(file=paste0(helper_funcs_path, &quot;Derive_Error_Distributions.R&quot;))
 # Pull in functions for collecting all simulation parameters
-source(file=paste0(helper_funcs_path, &quot;Generate_All_Simulation_Parameters.R&quot;))
+source(file=paste0(helper_funcs_path, &quot;Derive_Sim_Parameters.R&quot;))
 # Pull in functions for data simulation
 source(file=paste0(helper_funcs_path, &quot;Simulate_SMART_Data.R&quot;))
 # Pull in functions for model fitting
@@ -1661,7 +1659,7 @@ source(file=paste0(helper_funcs_path, &quot;Simulate_and_Fit_Data.R&quot;))
 # Pull in functions for inference
 source(file=paste0(helper_funcs_path, &quot;Conduct_Inference.R&quot;))
 # Pull in model fitting function
-source(file=paste0(model_fit_func_path, &quot;function_v3.5.R&quot;))</code></pre>
+source(file=paste0(model_fit_func_path, &quot;function_v3.5_1.R&quot;))</code></pre>
 <pre><code>## Loading required package: usethis</code></pre>
 <pre class="r"><code># Define alternate fit settings
 alt_fit_settings_types_sheets &lt;- list(c(&quot;static&quot;, &quot;alt_fit_settings_static&quot;))
@@ -1676,8 +1674,10 @@ full_driver &lt;- Read_Driver_File(path=paste0(notes_path, &quot;Driver_Three_Le
                                 fit_settings_sheet=&quot;fit_settings&quot;,
                                 alt_fit_settings_types_sheets=alt_fit_settings_types_sheets)</code></pre>
 <pre class="r"><code># Read in Conditional Parameters
-pre_r_mc_parms &lt;- Import_Pre_R_MC_Results(path=pre_r_param_path, 
-                                          prefix=&quot;parameters_&quot;)</code></pre>
+pre_r_mc_parms &lt;- 
+  Import_Pre_R_MC_Results(path=pre_r_param_path, 
+                          pre_r_marg_parms=full_driver[[&quot;var_parms_pre_r&quot;]],
+                          prefix=&quot;parameters_&quot;)</code></pre>
 <pre class="r"><code># Grab folder name for exporting
 export_folder_name &lt;- Get_Export_File_Name(path=data_path, 
                                            prefix=&quot;run_&quot;, 

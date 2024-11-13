@@ -18,9 +18,10 @@
 #### EDITS:         20 MAY 2024 - Added functionality to Execute_Driver_File_Main()
 ####                              so it only simulates rows with run_simulation==1
 ####                              (And made it save the driver)
-
-
-
+####                08 JUL 2024 - Replaced call of Obtain_All_Sim_Params() to
+####                              a Derive_Sim_Parms() call
+####                              Also stored pre_r_mc_parms in output
+####                18 SEP 2024 - Fixed static alt fit incorporation of covariates
 
 
 
@@ -201,14 +202,40 @@ Pull_Function_Args <- function(driver_parms, fit_number, fit_settings_df,
 
 # Reformat Summary Parameters
 ### model_fit_output = Output of solve_SMART_Multilayer() function
+# Reformat_Output <- function(model_fit_output) {
+#   temp_output <- model_fit_output[["summary_paras"]]
+#   for (row in rownames(temp_output)) {
+#     broken_string <- strsplit(temp_output[row, "Parameter"], split=" * ")
+#     temp_output[row, "Parameter"] <- broken_string[[1]][length(broken_string[[1]])]
+#   }
+#   Output <- temp_output[order(temp_output$Parameter),]
+#   rownames(Output) <- 1:nrow(Output)
+#   return(Output)
+# }
+
+# Reformat Summary Parameters and Variance Estimator Labels
+### model_fit_output = Output of solve_SMART_Multilayer() function
 Reformat_Output <- function(model_fit_output) {
-  temp_output <- model_fit_output[["summary_paras"]]
-  for (row in rownames(temp_output)) {
-    broken_string <- strsplit(temp_output[row, "Parameter"], split=" * ")
-    temp_output[row, "Parameter"] <- broken_string[[1]][length(broken_string[[1]])]
+  temp_output_paras <- model_fit_output[["summary_paras"]]
+  temp_output_var <- model_fit_output[["var_estimator"]]
+  for (row in rownames(temp_output_paras)) {
+    broken_string <- strsplit(temp_output_paras[row, "Parameter"], split=" * ")
+    temp_output_paras[row, "Parameter"] <- broken_string[[1]][length(broken_string[[1]])]
   }
-  Output <- temp_output[order(temp_output$Parameter),]
-  rownames(Output) <- 1:nrow(Output)
+  for (i in (1:nrow(temp_output_var))) {
+    rowname <- rownames(temp_output_var)[i]
+    colname <- colnames(temp_output_var)[i]
+    broken_string_row <- strsplit(rowname, split=" * ")
+    rownames(temp_output_var)[i] <-
+      broken_string_row[[1]][length(broken_string_row[[1]])]
+    broken_string_col <- strsplit(colname, split=" * ")
+    colnames(temp_output_var)[i] <-
+      broken_string_col[[1]][length(broken_string_col[[1]])]
+  }
+  params_in_new_order <- order(temp_output_paras$Parameter)
+  Output <- list(summary_paras=temp_output_paras[params_in_new_order,],
+                 var_estimator=temp_output_var[params_in_new_order, params_in_new_order])
+  rownames(Output[["summary_paras"]]) <- 1:nrow(Output[["summary_paras"]])
   return(Output)
 }
 
@@ -245,14 +272,16 @@ Fit_Model <- function(driver_parms, fit_number, fit_settings_df, sim_data, crit_
                                    dof_adjustment=fit_args[["dof_adjustment"]],
                                    use_t=fit_args[["use_t"]],
                                    verbose=0)
-  Output[["summary_paras"]] <- Reformat_Output(model_fit_output=Output)
+  reformatted_components <- Reformat_Output(model_fit_output=Output)
+  Output[["summary_paras"]] <- reformatted_components[["summary_paras"]]
+  Output[["var_estimator"]] <- reformatted_components[["var_estimator"]]
   return(Output)
 }
 
 
 # Run a Single Iteration of a Driver Row
 ### driver_parms = Output of Process_Driver_Row_Main() function
-### sim_parms = Output of Obtain_All_Sim_Params() function
+### sim_parms = Output of Derive_Sim_Parms() function
 ### fit_settings_df = Dataframe of driver sheet of model fit settings
 ### alt_fit_settings_dfs = List of dataframe of driver sheets of alternate model 
 ###                        fit settings (indexed by alternate fit types)
@@ -290,7 +319,7 @@ Run_Single_Iteration <- function(driver_parms, sim_parms, fit_settings_df,
 
 # Run a Multiple Iterations of a Driver Row
 ### driver_parms = Output of Process_Driver_Row_Main() function
-### sim_parms = Output of Obtain_All_Sim_Params() function
+### sim_parms = Output of Derive_Sim_Parms() function
 ### fit_settings_df = Dataframe of driver sheet of model fit settings
 ### alt_fit_settings_dfs = List of dataframe of driver sheets of alternate model 
 ###                        fit settings (indexed by alternate fit types)
@@ -323,11 +352,11 @@ Run_Multiple_Iterations <- function(driver_parms, sim_parms, fit_settings_df,
 Execute_Driver_Row <- function(full_driver, driver_rowname, pre_r_mc_parms,
                                do_par=FALSE, n_threads=1) {
   driver_parms <- Process_Driver_Row_Main(driver_row=full_driver[["driver"]][driver_rowname,])
-  sim_parms <- Obtain_All_Sim_Params(driver_parms=driver_parms,
-                                     cp_settings_df=full_driver[["cp_settings"]],
-                                     pre_r_marg_parms=full_driver[["var_parms_pre_r"]],
-                                     pre_r_cond_var_parms=pre_r_mc_parms,
-                                     post_r_var_parms=full_driver[["var_parms_post_r"]])
+  sim_parms <- Derive_Sim_Parms(driver_parms=driver_parms,
+                                cp_settings_df=full_driver[["cp_settings"]],
+                                pre_r_marg_parms=full_driver[["var_parms_pre_r"]],
+                                pre_r_cond_parms=pre_r_mc_parms, 
+                                post_r_var_parms=full_driver[["var_parms_post_r"]])
   Output <- NULL
   Output[["driver_parms"]] <- driver_parms
   Output[["sim_parms"]] <- sim_parms
@@ -393,6 +422,8 @@ Execute_Driver_File_Main <- function(full_driver, pre_r_mc_parms,
   }
   saveRDS(object=full_driver, 
           file=paste0(path, folder_name, "/Driver"))
+  saveRDS(object=pre_r_mc_parms, 
+          file=paste0(path, folder_name, "/Pre_R_MC_Parms"))
 }
 
 
@@ -416,7 +447,7 @@ Fit_Alt_Model_Static <- function(driver_parms,
                                             sim_data=sim_data)
   
   Output <- solve_SMART(Y=fit_args[["Y"]],
-                        X=NULL,#fit_args[["X"]],
+                        X=fit_args[["X"]],
                         cluster_id=fit_args[["id"]],
                         A1=fit_args[["A1"]],
                         R=fit_args[["R"]],
@@ -453,7 +484,9 @@ Pull_Function_Args_Alt_Static <- function(driver_parms, alt_fit_number,
   static_data <- Collapse_Sim_Data(sim_data=sim_data, 
                                    outcome_type=fit_settings$outcome_type)
   Output[["Y"]] <- static_data$y
-  Output[["X"]] <- static_data[,driver_parms[["covars"]]]
+  if (driver_parms[["n_covar"]]>0) {
+    Output[["X"]] <- static_data[,driver_parms[["covars"]]]
+  } else {Output[["X"]] <- NULL}
   Output[["id"]] <- static_data$cluster_id
   Output[["A1"]] <- static_data$a_1
   Output[["R"]] <- static_data$r
