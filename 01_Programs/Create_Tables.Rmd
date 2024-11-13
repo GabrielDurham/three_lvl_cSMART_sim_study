@@ -1,0 +1,331 @@
+---
+title: "Create Tables"
+output: html_notebook
+---
+
+This is code which takes fit output and creates tables
+
+```{r Load in Preamble}
+# Load in packages and file paths
+source(file="Preamble.R")
+```
+
+```{r Load in Functions}
+# Pull in functions for general data maintenance
+source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
+# Pull in functions for pre-response MC simulations
+source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
+# Pull in functions for collecting all simulation parameters
+source(file=paste0(helper_funcs_path, "Derive_Sim_Parameters.R"))
+# Pull in functions for data simulation
+source(file=paste0(helper_funcs_path, "Simulate_SMART_Data.R"))
+# Pull in functions for model fitting
+source(file=paste0(helper_funcs_path, "Simulate_and_Fit_Data.R"))
+# Pull in functions for inference
+source(file=paste0(helper_funcs_path, "Conduct_Inference.R"))
+# Pull in table creation functions
+source(file=paste0(helper_funcs_path, "Create_Tables.R"))
+# Pull in model fitting function
+source(file=paste0(model_fit_func_path, "function_v3.5_1.R"))
+```
+
+
+```{r Read in Inference Results}
+base_run <- "run_20241001"
+base_inference_output <- readRDS(file=paste0(analysis_path, base_run))
+
+es_run <- "run_20241001"
+es_inference_output <- readRDS(file=paste0(analysis_path, es_run))
+
+wv_misspec_run <- "run_20240921"
+wvm_inference_output <- readRDS(file=paste0(analysis_path, wv_misspec_run))
+```
+
+
+
+```{r Initialize Filter Variables}
+comp_filter <- "dtr_1==\"d_1_1\" & dtr_2==\"d_m1_m1\""
+```
+
+
+
+```{r}
+# Create a Caption Object for Easy LaTeX input
+### table = Table to create caption for
+### caption = Desired table caption
+### label = Label for table
+Create_Caption <- function(table, caption=NULL, label=NULL) {
+  temp_output <- list()
+  temp_output$pos <- list()
+  temp_output$pos[[1]] <- c(nrow(table))
+  out_label <- ""
+  if (!is.null(caption)) {
+    out_label <- paste0(out_label, "\\caption{", caption, "}")
+  }
+  if (!is.null(label)) {
+    out_label <- paste0(out_label, "\\label{", label, "}\n")
+  }
+  temp_output$command <- c(out_label)
+  
+  Output <- temp_output
+  return(Output)
+}
+```
+
+
+
+
+```{r Create Base Table}
+base_table_fits <- list(
+  "N=20"=list(fit_data=base_inference_output[["sim_ASIC-Primary-20"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter),
+  "N=30"=list(fit_data=base_inference_output[["sim_ASIC-Primary-30"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter),
+  "N=40"=list(fit_data=base_inference_output[["sim_ASIC-Primary-40"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter),
+  "N=50"=list(fit_data=es_inference_output[["sim_ASIC-Primary-50"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter),
+  "N=75"=list(fit_data=base_inference_output[["sim_ASIC-Primary-75"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter),
+  "N=100"=list(fit_data=base_inference_output[["sim_ASIC-Primary-100"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter)
+)
+base_table <- Summarize_Multiple_Fits(fit_list=base_table_fits)
+base_table <- Round_and_Format_DF(df=base_table)
+cols_to_show_base <- c("Description", "Bias", "SD", "RMSE", "Coverage")
+
+print(xtable(x=base_table[, cols_to_show_base]), include.rownames=FALSE)
+
+```
+
+
+```{r Create Effect Size Tables}
+n_list_es_hc <- c(661, 106, 42, 19)
+
+es_table_fits <- list(
+  "$\\delta=0.2$ ($n=661$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-yTot-n:2-ES:0.2"]][["fit_1"]][["EOS"]],
+         filter_statement=comp_filter),
+  "$\\delta=0.5$ ($n=106$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-yTot-n:2-ES:0.5"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter),
+  "$\\delta=0.8$ ($n=42$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-yTot-n:2-ES:0.8"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter),
+  "$\\delta=1.2$ ($n=19$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-yTot-n:2-ES:1.2"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter)
+)
+es_table_fits_static <- list(
+  "$\\delta=0.2$ ($n=661$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-yTot-n:2-ES:0.2"]][["alt_fit_1"]],
+         filter_statement=comp_filter),
+  "$\\delta=0.5$ ($n=106$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-yTot-n:2-ES:0.5"]][["alt_fit_1"]],
+         filter_statement=comp_filter),
+  "$\\delta=0.8$ ($n=42$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-yTot-n:2-ES:0.8"]][["alt_fit_1"]],
+         filter_statement=comp_filter),
+  "$\\delta=1.2$ ($n=19$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-yTot-n:2-ES:1.2"]][["alt_fit_1"]],
+         filter_statement=comp_filter)
+)
+es_table_1 <- Summarize_Multiple_Fits(fit_list=es_table_fits)
+es_table_1 <- Round_and_Format_DF(df=es_table_1, n_digits=2)
+
+es_table_2 <- Summarize_Multiple_Fits(fit_list=es_table_fits_static)
+es_table_2 <- Round_and_Format_DF(df=es_table_2, n_digits=2)
+
+es_table_hc <- data.frame()
+cols_to_show_es_hc <- c("Bias", "RMSE", "Coverage", "Power")
+
+for (es in unique(es_table_1$Description)) {
+  new_row <- data.frame("Effect Size (n)"=es)
+  long_data <- es_table_1[es_table_1$Description==es, ]
+  static_data <- es_table_2[es_table_2$Description==es, ]
+  for (col in cols_to_show_es_hc) {
+    new_row[[paste0(col,"_static")]] <- static_data[[col]]
+    new_row[[paste0(col,"_long")]] <- long_data[[col]]
+  }
+  es_table_hc <- rbind(es_table_hc, new_row)
+}
+
+
+es_table_hc_cap <- 
+  Create_Caption(table=es_table_hc,
+                 caption="Static vs Longitudinal Power Comparison - High Correlation",
+                 label="tab:Power_Comp")
+
+
+print(xtable(x=es_table_hc), include.rownames=FALSE, 
+      add.to.row=es_table_hc_cap, sanitize.text.function=function(x){x})
+```
+
+
+
+
+
+
+```{r}
+n_list_es_lc <- c(633, 102, 40, 18)
+
+
+es_lc_table_fits <- list(
+  "$\\delta=0.2$ ($n=633$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-y-n:2-ES:0.2"]][["fit_1"]][["EOS"]],
+         filter_statement=comp_filter),
+  "$\\delta=0.5$ ($n=102$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-y-n:2-ES:0.5"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter),
+  "$\\delta=0.8$ ($n=40$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-y-n:2-ES:0.8"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter),
+  "$\\delta=1.2$ ($n=18$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-y-n:2-ES:1.2"]][["fit_1"]][["EOS"]],
+              filter_statement=comp_filter)
+)
+es_lc_table_fits_static <- list(
+  "$\\delta=0.2$ ($n=633$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-y-n:2-ES:0.2"]][["alt_fit_1"]],
+         filter_statement=comp_filter),
+  "$\\delta=0.5$ ($n=102$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-y-n:2-ES:0.5"]][["alt_fit_1"]],
+         filter_statement=comp_filter),
+  "$\\delta=0.8$ ($n=40$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-y-n:2-ES:0.8"]][["alt_fit_1"]],
+         filter_statement=comp_filter),
+  "$\\delta=1.2$ ($n=18$)"=
+    list(fit_data=es_inference_output[["sim_ASIC-Eff-Size-y-n:2-ES:1.2"]][["alt_fit_1"]],
+         filter_statement=comp_filter)
+)
+es_lc_table_1 <- Summarize_Multiple_Fits(fit_list=es_lc_table_fits)
+es_lc_table_1 <- Round_and_Format_DF(df=es_lc_table_1, n_digits=2)
+
+es_lc_table_2 <- Summarize_Multiple_Fits(fit_list=es_lc_table_fits_static)
+es_lc_table_2 <- Round_and_Format_DF(df=es_lc_table_2, n_digits=2)
+
+es_table_lc <- data.frame()
+cols_to_show_es_lc <- c("Bias", "RMSE", "Coverage", "Power")
+
+for (es in unique(es_lc_table_1$Description)) {
+  new_row <- data.frame("Effect Size (n)"=es)
+  long_data <- es_lc_table_1[es_lc_table_1$Description==es, ]
+  static_data <- es_lc_table_2[es_lc_table_2$Description==es, ]
+  for (col in cols_to_show_es_lc) {
+    new_row[[paste0(col,"_static")]] <- static_data[[col]]
+    new_row[[paste0(col,"_long")]] <- long_data[[col]]
+  }
+  es_table_lc <- rbind(es_table_lc, new_row)
+}
+
+
+es_table_lc_cap <- 
+  Create_Caption(table=es_table_lc,
+                 caption="Static vs Longitudinal Power Comparison - Low Correlation",
+                 label="tab:Power_Comp_LC")
+
+
+print(xtable(x=es_table_lc), include.rownames=FALSE, 
+      add.to.row=es_table_lc_cap, sanitize.text.function=function(x){x})
+```
+
+
+
+
+
+
+
+
+```{r Create Working Variance Misspecification Tables}
+wvm_table_fits <- list(In=NULL,
+                       Un=NULL)
+
+wvm_table_caps <- list(
+  In=Create_Caption(table=wvm_tables_merged[[dg_setting]],
+                    caption="Working Variance Misspecification - Independent Data Generative Model",
+                    label="tab:WVM_In"),
+  Un=Create_Caption(table=wvm_tables_merged[[dg_setting]],
+                    caption="Working Variance Misspecification - Unstructured Data Generative Model",
+                    label="tab:WVM_Un")
+)
+
+
+for (dg_setting in names(wvm_table_fits)) {
+  wvm_table_fits[[dg_setting]] <- list(fit_un=NULL,
+                                       fit_ex=NULL,
+                                       fit_in=NULL)
+}
+for (dg_setting in names(wvm_table_fits)) {
+  for (fit in names(wvm_table_fits[[dg_setting]])) {
+    for (n in c(30, 40, 50, 75, 100)) {
+      fit_label <- ifelse(fit=="fit_un", "fit_1",
+                          ifelse(fit=="fit_ex", "fit_2",
+                          ifelse(fit=="fit_in", "fit_3", NA)))
+      sim_label <- paste0("sim_ASIC-WVM-", dg_setting, "-n-", n)
+      wvm_table_fits[[dg_setting]][[fit]][[paste0("N=",n)]] <- 
+        list(fit_data=wvm_inference_output[[sim_label]][[fit_label]][["EOS"]],
+             filter_statement=comp_filter)
+}}}
+
+wvm_cols <- c("RMSE", "Coverage", "Power")
+wvm_col_order <- c("N")
+for (col in wvm_cols) {
+  wvm_col_order <- c(wvm_col_order,
+                     c(paste0(col, "_un"),
+                       paste0(col, "_ex"),
+                       paste0(col, "_in")))
+}
+
+
+
+wvm_tables <- list(In=NULL, Un=NULL)
+wvm_tables_merged <- list(In=NULL, Un=NULL)
+for (dg_setting in names(wvm_table_fits)) {
+  # Create Individual Tables
+  for (fit in names(wvm_table_fits[[dg_setting]])) {
+    wvm_tables[[dg_setting]][[fit]] <- 
+      Summarize_Multiple_Fits(fit_list=wvm_table_fits[[dg_setting]][[fit]])
+    wvm_tables[[dg_setting]][[fit]] <- 
+      Round_and_Format_DF(df=wvm_tables[[dg_setting]][[fit]], n_digits=2)
+    # print("**********************")
+    # print(paste0("*** DG Setting: ", dg_setting, " ***"))
+    # print(paste0("*** ", fit, "         ***"))
+    # print(xtable(x=wvm_tables[[dg_setting]][[fit]][, wvm_cols]), 
+    #       include.rownames=FALSE)
+    # print("**********************")
+  }
+  # Create Merged Tables
+  wvm_tables_merged[[dg_setting]] <- data.frame()
+  for (n in names(wvm_table_fits[[dg_setting]][[1]])) {
+    new_row <- data.frame(N=n)
+    for (fit in c("un", "ex", "in")) {
+      #for (col in c("Bias", "SD", "RMSE", "Coverage", "Power")) {
+      for (col in c("RMSE", "Coverage", "Power")) {
+        col_label <- paste0(col, "_", fit)
+        relevant_row <- names(wvm_table_fits[[dg_setting]][[1]])==n
+        new_row[[col_label]] <- 
+          wvm_tables[[dg_setting]][[paste0("fit_", fit)]][relevant_row, col]
+      }
+    }
+    wvm_tables_merged[[dg_setting]] <- rbind(wvm_tables_merged[[dg_setting]],
+                                             new_row)
+  }
+  wvm_tables_merged[[dg_setting]] <- 
+    Round_and_Format_DF(wvm_tables_merged[[dg_setting]], n_digits=2)
+
+  #print(xtable(x=wvm_tables_merged[[dg_setting]][, wvm_col_order]), 
+  print(xtable(x=wvm_tables_merged[[dg_setting]]), 
+        include.rownames=FALSE, add.to.row=wvm_table_caps[[dg_setting]])
+}
+
+
+
+
+```
+
+
+
+
+
+
+

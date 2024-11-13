@@ -1,0 +1,297 @@
+---
+title: "Process_ASIC_Parms"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+This is scratch code to process ASIC Parameters
+
+```{r Load in Preamble}
+# Load in packages and file paths
+source(file="Preamble.R")
+```
+
+```{r}
+# Pull in functions for general data maintenance
+source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
+# Pull in functions for pre-response MC simulations
+source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
+# Pull in functions for collecting all simulation parameters
+source(file=paste0(helper_funcs_path, "Derive_Sim_Parameters.R"))
+# Pull in functions for data simulation
+source(file=paste0(helper_funcs_path, "Simulate_SMART_Data.R"))
+# Pull in functions for consistency checking
+source(file=paste0(helper_funcs_path, "Check_Distribution_Consistency.R"))
+# Pull in functions for processing ASIC Parms
+source(file=paste0(helper_funcs_path, "Process_ASIC_Parms.R"))
+```
+
+
+
+```{r}
+# Set Date Flag
+file_suff <- "_20240919.csv"
+cp_settings_df <- 
+  read.csv(file=paste0(ASIC_parms_path, "Raw/cond_param_settings", file_suff))
+var_parm_settings_pre_r <- 
+  read.csv(file=paste0(ASIC_parms_path, "Raw/var_parm_settings_pre_r", file_suff))
+var_parm_settings_post_r <- 
+  read.csv(file=paste0(ASIC_parms_path, "Raw/var_parm_settings_post_r", file_suff))
+```
+
+
+```{r}
+# Read in Driver File
+full_driver <- Read_Driver_File(path=paste0(notes_path, "Driver_Three_Level_Simulations.xlsx"), 
+                                driver_sheet="main", 
+                                cp_sheet="cond_param_settings",
+                                var_parm_pre_r_sheet="var_parm_settings_pre_r",
+                                var_parm_post_r_sheet="var_parm_settings_post_r",
+                                fit_settings_sheet="fit_settings")
+
+# Read in Conditional Parameters
+pre_r_mc_parms <- Import_Pre_R_MC_Results(path=pre_r_param_path, 
+                                          prefix="parameters_", 
+                                          pre_r_marg_parms=full_driver[["var_parms_pre_r"]])
+```
+
+
+
+# First Examine Pre-Response Variance Settings
+```{r}
+expanded_pre_r_var_settings <- 
+  Expand_Driver_File_Pre_R(raw_driver_file=var_parm_settings_pre_r)
+all_settings_consistent <- TRUE
+for (row in rownames(expanded_pre_r_var_settings)) {
+  parms <- 
+    Process_Driver_Row_Pre_R_MC(driver_row=expanded_pre_r_var_settings[row, ])
+  helper_parms <- 
+    Construct_Pre_Resp_Helper_Parms(parms=parms)
+  Sigma_01 <- 
+    Build_Pre_Resp_Error_Var_Matrix(parms=parms, pre_r_helper_parms=helper_parms)
+  if (det(Sigma_01)<=0) {
+    message("Inconsistent Setting: ", expanded_pre_r_var_settings[row, "cond_param_setting_pre_r"])
+    message("n_i: ", parms$n_i)
+    all_settings_consistent <- FALSE
+  }
+}
+if (all_settings_consistent) {
+  print("All pre-response settings consistent with data generative model.")
+}
+```
+
+
+```{r}
+processed_ASIC_cp_settings <- data.frame()
+```
+
+
+
+```{r}
+# Grab CP Settings for Base
+base_setting <- 
+  Process_Variance_Settings(cp_settings_df=cp_settings_df, 
+                            cp_setting_base="y_v.thet.dhet_d.AR.het_od.Ex.het", 
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            notes_base="Base", 
+                            cluster_sizes=c(2,3))
+
+processed_ASIC_cp_settings <- rbind(processed_ASIC_cp_settings, base_setting)
+
+```
+
+
+
+```{r}
+ES_table_settings <- 
+  Process_Variance_Settings(cp_settings_df=cp_settings_df, 
+                            cp_setting_base="ytot_v.thet.dhom_d.AR.hom_od.Ex.hom", 
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="eff_size", 
+                            eff_sizes=c(0.2, 0.5, 0.8, 1.2), 
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            notes_base="Eff_Size_Table", 
+                            cluster_sizes=c(2,3))
+processed_ASIC_cp_settings <- rbind(processed_ASIC_cp_settings, ES_table_settings)
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+```{r}
+# Display Required Sample Size
+# (Note that variance settings identical across sizes)
+Grab_Sample_Size(cp_settings=ES_table_settings, 
+                            cp_setting_base="ytot_v.thet.dhom_d.AR.hom_od.Ex.hom_ES_0.2", 
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            eff_sizes=c(0.2, 0.5, 0.8, 1.2), 
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            cluster_sizes=c(2,3))
+```
+
+
+
+
+
+
+
+```{r}
+# Grab CP Settings for Working Variance Misspecification
+unstructured_setting <- 
+  Process_Variance_Settings(cp_settings_df=cp_settings_df, 
+                            cp_setting_base="y_v.thet.dhet_d.Un.het_od.Un.het", 
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            notes_base="WV_Misspec_Un", 
+                            cluster_sizes=c(2,3))
+
+# Issue with inconsistent variance settings - Fix by overwriting mean/variance
+# of d_1_m1 with that of d_1_1 (won't affect any d_1_1/d_m1_m1 comparisons)
+prob_setting <- "y_v.thet.dhet_d.Un.het_od.Un.het"
+prob_setting_1_1 <- paste0(prob_setting, "_(1,1)")
+prob_setting_1_m1 <- paste0(prob_setting, "_(1,-1)")
+temp_cps_df <- cp_settings_df
+
+var_parm_settings_post_r[var_parm_settings_post_r$cond_param_setting_post_r==prob_setting_1_m1, "sigma2_2"] <- 
+  var_parm_settings_post_r[var_parm_settings_post_r$cond_param_setting_post_r==prob_setting_1_1, "sigma2_2"]
+temp_cps_df[temp_cps_df$cond_parm_setting==prob_setting&temp_cps_df$dtr=="d_1_m1", "mean_2"] <- 
+  temp_cps_df[temp_cps_df$cond_parm_setting==prob_setting&temp_cps_df$dtr=="d_1_1", "mean_2"]
+
+unstructured_setting <- 
+  Process_Variance_Settings(cp_settings_df=temp_cps_df, 
+                            cp_setting_base="y_v.thet.dhet_d.Un.het_od.Un.het", 
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            notes_base="WV_Misspec_Un", 
+                            cluster_sizes=c(2,3))
+
+
+
+
+independent_setting <- 
+  Process_Variance_Settings(cp_settings_df=cp_settings_df, 
+                            cp_setting_base="y_v.thet.dhet_d.In.het_od.In.het", 
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            notes_base="WV_Misspec_In", 
+                            cluster_sizes=c(2,3))
+homo_setting <-
+  Process_Variance_Settings(cp_settings_df=cp_settings_df,
+                            cp_setting_base="y_v.thet.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="WV_Misspec_Homo",
+                            cluster_sizes=c(2,3))
+
+
+
+
+hom_cp_settings_df <- cp_settings_df[cp_settings_df$cond_parm_setting=="y_v.thet.dhom_d.AR.hom_od.Ex.hom", ]
+hom_cp_settings_df[1, "mean_2"] <- hom_cp_settings_df[3, "mean_2"] + 
+  hom_cp_settings_df[1, "mean_2"] - hom_cp_settings_df[4, "mean_2"]
+hom_cp_settings_df[4, "mean_2"] <- hom_cp_settings_df[3, "mean_2"]
+hom_cp_settings_df[5, "mean_2"] <- hom_cp_settings_df[6, "mean_2"]
+
+homo_setting <-
+  Process_Variance_Settings(cp_settings_df=hom_cp_settings_df,
+                            cp_setting_base="y_v.thet.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="WV_Misspec_Homo",
+                            cluster_sizes=c(2,3))
+
+
+
+processed_ASIC_cp_settings <- rbind(processed_ASIC_cp_settings, 
+                                    unstructured_setting,
+                                    independent_setting,
+                                    homo_setting)
+```
+
+
+```{r}
+# Grab CP Settings for Effect Size With Low Correlation
+ES_table_low_cor_settings <-
+  Process_Variance_Settings(cp_settings_df=hom_cp_settings_df,
+                            cp_setting_base="y_v.thet.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="eff_size",
+                            eff_sizes=c(0.2, 0.5, 0.8, 1.2), 
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="Eff_Size_Table_Low_C",
+                            cluster_sizes=c(2,3))
+processed_ASIC_cp_settings <- rbind(processed_ASIC_cp_settings, 
+                                    ES_table_low_cor_settings)
+```
+
+
+```{r}
+Grab_Sample_Size(cp_settings=ES_table_low_cor_settings, 
+                            cp_setting_base="y_v.thet.dhom_d.AR.hom_od.Ex.hom_ES_0.2", 
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            eff_sizes=c(0.2, 0.5, 0.8, 1.2), 
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            cluster_sizes=c(2,3))
+```
+
+
+
+
+```{r}
+# Grab relevant post response variance structures
+post_r_var_settings <- unique(processed_ASIC_cp_settings$post_r_var_str)
+processed_ASIC_post_r_var_settings <- 
+  var_parm_settings_post_r[var_parm_settings_post_r$cond_param_setting_post_r %in% post_r_var_settings, ]
+```
+
+
+
+```{r}
+# Export file
+out_file_name <- Get_Export_File_Name(path=paste0(ASIC_parms_path, "Processed/"), 
+                                      prefix="ASIC_driver_settings", 
+                                      file_suffix=".xlsx")
+out_path <- paste0(ASIC_parms_path, "Processed/", out_file_name)
+sheets <- list("cp_settings" = processed_ASIC_cp_settings, 
+               "var_parm_settings_post_r" = processed_ASIC_post_r_var_settings)
+write_xlsx(sheets, out_path)
+
+```
+

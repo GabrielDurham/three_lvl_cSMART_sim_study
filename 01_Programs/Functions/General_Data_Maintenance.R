@@ -23,6 +23,10 @@
 ####        03 JUN 2024 (GJD) - Added outcome_prefix input to Summarize_Emp_Data()
 ####        10 JUL 2024 (GJD) - Added functionality to Import_Pre_R_MC_Results()
 ####                              to allow for centering errors
+####        01 AUG 2024 (GJD) - Dropped unnecessary columns in cp_settings driver
+####                              sheet
+####        10 SEP 2024 (GJD) - Fixed issue in processing driver file row where it didn't
+####                              read NAs correctly
 
 #Read in Driver File
 ### path = File location for driver file
@@ -45,6 +49,10 @@ Read_Driver_File <- function(path, driver_sheet="main",
                                                 col_names=TRUE))
   Output[["cp_settings"]] <- as.data.frame(read_xlsx(path=path, sheet=cp_sheet, 
                                                      col_names=TRUE))
+  #Don't store unnecessary cp_settings columns
+  cps_cols_to_drop <- c("Notes")
+  Output[["cp_settings"]] <- 
+    Output[["cp_settings"]][ , !names(Output[["cp_settings"]]) %in% cps_cols_to_drop]
   Output[["var_parms_pre_r"]] <- as.data.frame(read_xlsx(path=path, 
                                                          sheet=var_parm_pre_r_sheet, 
                                                          col_names=TRUE))
@@ -215,7 +223,7 @@ Process_Driver_Row_Main <- function(driver_row){
   Output[["cluster_sizes"]] <- eval(parse(text=driver_row[1,"cluster_sizes"]))
   
   # Default cluster size randomization probabilities are balanced
-  if (is.na(driver_row$p_cluster_size)) {
+  if (is.na(driver_row$p_cluster_size)[1]) {
     Output[["p_cluster_size"]] <- rep(1/length(Output[["cluster_sizes"]]),
                                       length(Output[["cluster_sizes"]]))
   } else {
@@ -223,7 +231,7 @@ Process_Driver_Row_Main <- function(driver_row){
   }
   
   # Default DTR assignment probabilities are balanced
-  if (is.na(driver_row$p_dtr)) {
+  if (is.na(driver_row$p_dtr)[1]) {
     if (driver_row$SMART_structure=="prototypical") {
       Output[["p_dtr"]] <- rep(0.25, 4)
     }

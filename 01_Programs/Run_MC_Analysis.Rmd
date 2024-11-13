@@ -29,7 +29,7 @@ source(file=paste0(helper_funcs_path, "Simulate_and_Fit_Data.R"))
 # Pull in functions for inference
 source(file=paste0(helper_funcs_path, "Conduct_Inference.R"))
 # Pull in model fitting function
-source(file=paste0(model_fit_func_path, "function_v3.5.R"))
+source(file=paste0(model_fit_func_path, "function_v3.5_1.R"))
 ```
 
 
@@ -105,12 +105,4 @@ saveRDS(object=inference_output,
         file=paste0(analysis_path, export_folder_name))
 
 ```
-
-
-
-
-
-
-
-
 

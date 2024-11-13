@@ -73,13 +73,14 @@ Simulate_Y_0_1_R_One_Cluster <- function(driver_parms, sim_parms, dtr, n_i) {
   cluster_parms <- sim_parms[[paste0("n_", n_i)]][[dtr]]
   Sigma_0_1 <- cluster_parms[["sim_parms"]][["Sigma_01"]]
   e_0_1 <- mvrnorm(n = 1, mu=integer(2*n_i), Sigma=Sigma_0_1)
+  
   e_0 <- e_0_1[(1:n_i)]
   e_1 <- e_0_1[((n_i+1):(2*n_i))]
+  
   mean_helper_parms <- cluster_parms[["sim_parms"]][["mean_helper_parms"]]
   P_1 <- cluster_parms[["sim_parms"]][["P"]][["R"]][1]
   y_0 <- mean_helper_parms[["t_0"]] + e_0
   y_1 <- mean_helper_parms[["t_1"]] + P_1*y_0 + e_1
-  
   #Grab centered outcomes and response
   y_0_c <- e_0
   y_1_c <- P_1*e_0 + e_1
@@ -111,7 +112,6 @@ Sim_Pre_R_Data <- function(driver_parms, sim_parms) {
     cluster_assignments$a_2 <- NA
     cluster_assignments$a_2r <- NA
     cluster_assignments$a_2nr <- NA
-    
     pre_r_outcomes <- data.frame(cluster_id=numeric(), person_id=numeric(), 
                                  y_0=numeric(), y_1=numeric(), e_0=numeric(), 
                                  e_1=numeric(), r=numeric())
@@ -122,6 +122,7 @@ Sim_Pre_R_Data <- function(driver_parms, sim_parms) {
       cluster_data <- Simulate_Y_0_1_R_One_Cluster(sim_parms=sim_parms, 
                                                    dtr=d_i, 
                                                    n_i=n_i)
+      
       cluster_y <- cluster_data[["Y"]]
       cluster_errs <- cluster_data[["e"]]
       cluster_r <- cluster_data[["R"]]

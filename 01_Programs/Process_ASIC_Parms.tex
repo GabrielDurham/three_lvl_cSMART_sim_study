@@ -1,0 +1,336 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Process\_ASIC\_Parms},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Process\_ASIC\_Parms}
+\author{}
+\date{\vspace{-2.5em}}
+
+\begin{document}
+\maketitle
+
+This is scratch code to process ASIC Parameters
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Load in packages and file paths}
+\FunctionTok{source}\NormalTok{(}\AttributeTok{file=}\StringTok{"Preamble.R"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Attaching package: 'dplyr'
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:stats':
+## 
+##     filter, lag
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'MASS'
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:dplyr':
+## 
+##     select
+\end{verbatim}
+
+\begin{verbatim}
+## Loading required package: foreach
+\end{verbatim}
+
+\begin{verbatim}
+## Loading required package: rngtools
+\end{verbatim}
+
+\begin{verbatim}
+## Loading required package: iterators
+\end{verbatim}
+
+\begin{verbatim}
+## Loading required package: parallel
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Pull in functions for general data maintenance}
+\FunctionTok{source}\NormalTok{(}\AttributeTok{file=}\FunctionTok{paste0}\NormalTok{(helper\_funcs\_path, }\StringTok{"General\_Data\_Maintenance.R"}\NormalTok{))}
+\CommentTok{\# Pull in functions for pre{-}response MC simulations}
+\FunctionTok{source}\NormalTok{(}\AttributeTok{file=}\FunctionTok{paste0}\NormalTok{(helper\_funcs\_path, }\StringTok{"Pre\_R\_Cond\_Param\_Sim.R"}\NormalTok{))}
+\CommentTok{\# Pull in functions for collecting all simulation parameters}
+\FunctionTok{source}\NormalTok{(}\AttributeTok{file=}\FunctionTok{paste0}\NormalTok{(helper\_funcs\_path, }\StringTok{"Derive\_Sim\_Parameters.R"}\NormalTok{))}
+\CommentTok{\# Pull in functions for data simulation}
+\FunctionTok{source}\NormalTok{(}\AttributeTok{file=}\FunctionTok{paste0}\NormalTok{(helper\_funcs\_path, }\StringTok{"Simulate\_SMART\_Data.R"}\NormalTok{))}
+\CommentTok{\# Pull in functions for consistency checking}
+\FunctionTok{source}\NormalTok{(}\AttributeTok{file=}\FunctionTok{paste0}\NormalTok{(helper\_funcs\_path, }\StringTok{"Check\_Distribution\_Consistency.R"}\NormalTok{))}
+\CommentTok{\# Pull in functions for processing ASIC Parms}
+\FunctionTok{source}\NormalTok{(}\AttributeTok{file=}\FunctionTok{paste0}\NormalTok{(helper\_funcs\_path, }\StringTok{"Process\_ASIC\_Parms.R"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Set Date Flag}
+\NormalTok{file\_suff }\OtherTok{\textless{}{-}} \StringTok{"\_20240829.csv"}
+\NormalTok{cp\_settings\_df }\OtherTok{\textless{}{-}} 
+  \FunctionTok{read.csv}\NormalTok{(}\AttributeTok{file=}\FunctionTok{paste0}\NormalTok{(ASIC\_parms\_path, }\StringTok{"Raw/cond\_param\_settings"}\NormalTok{, file\_suff))}
+\NormalTok{var\_parm\_settings\_pre\_r }\OtherTok{\textless{}{-}} 
+  \FunctionTok{read.csv}\NormalTok{(}\AttributeTok{file=}\FunctionTok{paste0}\NormalTok{(ASIC\_parms\_path, }\StringTok{"Raw/var\_parm\_settings\_pre\_r"}\NormalTok{, file\_suff))}
+\NormalTok{var\_parm\_settings\_post\_r }\OtherTok{\textless{}{-}} 
+  \FunctionTok{read.csv}\NormalTok{(}\AttributeTok{file=}\FunctionTok{paste0}\NormalTok{(ASIC\_parms\_path, }\StringTok{"Raw/var\_parm\_settings\_post\_r"}\NormalTok{, file\_suff))}
+\NormalTok{test\_cp\_setting }\OtherTok{\textless{}{-}}\NormalTok{ cp\_settings\_df[cp\_settings\_df}\SpecialCharTok{$}\NormalTok{cond\_parm\_setting}\SpecialCharTok{==}\StringTok{"y\_v.thet.dhet\_d.AR.het\_od.Ex.het"}\NormalTok{, ]}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Read in Driver File}
+\NormalTok{full\_driver }\OtherTok{\textless{}{-}} \FunctionTok{Read\_Driver\_File}\NormalTok{(}\AttributeTok{path=}\FunctionTok{paste0}\NormalTok{(notes\_path, }\StringTok{"Driver\_Three\_Level\_Simulations.xlsx"}\NormalTok{), }
+                                \AttributeTok{driver\_sheet=}\StringTok{"main"}\NormalTok{, }
+                                \AttributeTok{cp\_sheet=}\StringTok{"cond\_param\_settings"}\NormalTok{,}
+                                \AttributeTok{var\_parm\_pre\_r\_sheet=}\StringTok{"var\_parm\_settings\_pre\_r"}\NormalTok{,}
+                                \AttributeTok{var\_parm\_post\_r\_sheet=}\StringTok{"var\_parm\_settings\_post\_r"}\NormalTok{,}
+                                \AttributeTok{fit\_settings\_sheet=}\StringTok{"fit\_settings"}\NormalTok{)}
+
+\CommentTok{\# Read in Conditional Parameters}
+\NormalTok{pre\_r\_mc\_parms }\OtherTok{\textless{}{-}} \FunctionTok{Import\_Pre\_R\_MC\_Results}\NormalTok{(}\AttributeTok{path=}\NormalTok{pre\_r\_param\_path, }
+                                          \AttributeTok{prefix=}\StringTok{"parameters\_"}\NormalTok{, }
+                                          \AttributeTok{pre\_r\_marg\_parms=}\NormalTok{full\_driver[[}\StringTok{"var\_parms\_pre\_r"}\NormalTok{]])}
+\end{Highlighting}
+\end{Shaded}
+
+\section{First Examine Pre-Response Variance
+Settings}\label{first-examine-pre-response-variance-settings}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{expanded\_pre\_r\_var\_settings }\OtherTok{\textless{}{-}} 
+  \FunctionTok{Expand\_Driver\_File\_Pre\_R}\NormalTok{(}\AttributeTok{raw\_driver\_file=}\NormalTok{var\_parm\_settings\_pre\_r)}
+\NormalTok{all\_settings\_consistent }\OtherTok{\textless{}{-}} \ConstantTok{TRUE}
+\ControlFlowTok{for}\NormalTok{ (row }\ControlFlowTok{in} \FunctionTok{rownames}\NormalTok{(expanded\_pre\_r\_var\_settings)) \{}
+\NormalTok{  parms }\OtherTok{\textless{}{-}} 
+    \FunctionTok{Process\_Driver\_Row\_Pre\_R\_MC}\NormalTok{(}\AttributeTok{driver\_row=}\NormalTok{expanded\_pre\_r\_var\_settings[row, ])}
+\NormalTok{  helper\_parms }\OtherTok{\textless{}{-}} 
+    \FunctionTok{Construct\_Pre\_Resp\_Helper\_Parms}\NormalTok{(}\AttributeTok{parms=}\NormalTok{parms)}
+\NormalTok{  Sigma\_01 }\OtherTok{\textless{}{-}} 
+    \FunctionTok{Build\_Pre\_Resp\_Error\_Var\_Matrix}\NormalTok{(}\AttributeTok{parms=}\NormalTok{parms, }\AttributeTok{pre\_r\_helper\_parms=}\NormalTok{helper\_parms)}
+  \ControlFlowTok{if}\NormalTok{ (}\FunctionTok{det}\NormalTok{(Sigma\_01)}\SpecialCharTok{\textless{}=}\DecValTok{0}\NormalTok{) \{}
+    \FunctionTok{message}\NormalTok{(}\StringTok{"Inconsistent Setting: "}\NormalTok{, expanded\_pre\_r\_var\_settings[row, }\StringTok{"cond\_param\_setting\_pre\_r"}\NormalTok{])}
+    \FunctionTok{message}\NormalTok{(}\StringTok{"n\_i: "}\NormalTok{, parms}\SpecialCharTok{$}\NormalTok{n\_i)}
+\NormalTok{    all\_settings\_consistent }\OtherTok{\textless{}{-}} \ConstantTok{FALSE}
+\NormalTok{  \}}
+\NormalTok{\}}
+\ControlFlowTok{if}\NormalTok{ (all\_settings\_consistent) \{}
+  \FunctionTok{print}\NormalTok{(}\StringTok{"All pre{-}response settings consistent with data generative model."}\NormalTok{)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "All pre-response settings consistent with data generative model."
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{processed\_ASIC\_cp\_settings }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Grab CP Settings for Base}
+\NormalTok{base\_setting }\OtherTok{\textless{}{-}} 
+  \FunctionTok{Process\_Variance\_Settings}\NormalTok{(}\AttributeTok{cp\_settings\_df=}\NormalTok{cp\_settings\_df, }
+                            \AttributeTok{cp\_setting\_base=}\StringTok{"y\_v.thet.dhet\_d.AR.het\_od.Ex.het"}\NormalTok{, }
+                            \AttributeTok{var\_parm\_settings\_pre\_r=}\NormalTok{var\_parm\_settings\_pre\_r, }
+                            \AttributeTok{var\_parm\_settings\_post\_r=}\NormalTok{var\_parm\_settings\_post\_r,}
+                            \AttributeTok{pre\_r\_cond\_parms=}\NormalTok{pre\_r\_mc\_parms,}
+                            \AttributeTok{type=}\StringTok{"n"}\NormalTok{,}
+                            \AttributeTok{comp=}\FunctionTok{c}\NormalTok{(}\StringTok{"d\_1\_1"}\NormalTok{, }\StringTok{"d\_m1\_m1"}\NormalTok{), }
+                            \AttributeTok{notes\_base=}\StringTok{"Base"}\NormalTok{, }
+                            \AttributeTok{cluster\_sizes=}\FunctionTok{c}\NormalTok{(}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Modifying DTR: d_1_m1
+\end{verbatim}
+
+\begin{verbatim}
+## [1] "New output consistent with data generative model."
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{processed\_ASIC\_cp\_settings }\OtherTok{\textless{}{-}} \FunctionTok{rbind}\NormalTok{(processed\_ASIC\_cp\_settings, base\_setting)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ES\_table\_settings }\OtherTok{\textless{}{-}} 
+  \FunctionTok{Process\_Variance\_Settings}\NormalTok{(}\AttributeTok{cp\_settings\_df=}\NormalTok{cp\_settings\_df, }
+                            \AttributeTok{cp\_setting\_base=}\StringTok{"y\_v.thet.dhet\_d.AR.het\_od.Ex.het"}\NormalTok{, }
+                            \AttributeTok{var\_parm\_settings\_pre\_r=}\NormalTok{var\_parm\_settings\_pre\_r, }
+                            \AttributeTok{var\_parm\_settings\_post\_r=}\NormalTok{var\_parm\_settings\_post\_r,}
+                            \AttributeTok{pre\_r\_cond\_parms=}\NormalTok{pre\_r\_mc\_parms,}
+                            \AttributeTok{type=}\StringTok{"eff\_size"}\NormalTok{, }
+                            \AttributeTok{eff\_sizes=}\FunctionTok{c}\NormalTok{(}\FloatTok{0.01}\NormalTok{, }\FloatTok{0.2}\NormalTok{, }\FloatTok{0.5}\NormalTok{, }\FloatTok{0.8}\NormalTok{, }\FloatTok{1.2}\NormalTok{), }
+                            \AttributeTok{comp=}\FunctionTok{c}\NormalTok{(}\StringTok{"d\_1\_1"}\NormalTok{, }\StringTok{"d\_m1\_m1"}\NormalTok{), }
+                            \AttributeTok{notes\_base=}\StringTok{"Eff\_Size\_Table"}\NormalTok{, }
+                            \AttributeTok{cluster\_sizes=}\FunctionTok{c}\NormalTok{(}\DecValTok{2}\NormalTok{,}\DecValTok{3}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Modifying DTR: d_1_m1
+\end{verbatim}
+
+\begin{verbatim}
+## [1] "New output consistent with data generative model."
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{processed\_ASIC\_cp\_settings }\OtherTok{\textless{}{-}} \FunctionTok{rbind}\NormalTok{(processed\_ASIC\_cp\_settings, ES\_table\_settings)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Grab relevant post response variance structures}
+\NormalTok{post\_r\_var\_settings }\OtherTok{\textless{}{-}} \FunctionTok{unique}\NormalTok{(processed\_ASIC\_cp\_settings}\SpecialCharTok{$}\NormalTok{post\_r\_var\_str)}
+\NormalTok{processed\_ASIC\_post\_r\_var\_settings }\OtherTok{\textless{}{-}} 
+\NormalTok{  var\_parm\_settings\_post\_r[var\_parm\_settings\_post\_r}\SpecialCharTok{$}\NormalTok{cond\_param\_setting\_post\_r }\SpecialCharTok{\%in\%}\NormalTok{ post\_r\_var\_settings, ]}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Export file}
+\NormalTok{out\_file\_name }\OtherTok{\textless{}{-}} \FunctionTok{Get\_Export\_File\_Name}\NormalTok{(}\AttributeTok{path=}\FunctionTok{paste0}\NormalTok{(ASIC\_parms\_path, }\StringTok{"Processed/"}\NormalTok{), }
+                                      \AttributeTok{prefix=}\StringTok{"ASIC\_driver\_settings"}\NormalTok{, }
+                                      \AttributeTok{file\_suffix=}\StringTok{".xlsx"}\NormalTok{)}
+\NormalTok{out\_path }\OtherTok{\textless{}{-}} \FunctionTok{paste0}\NormalTok{(ASIC\_parms\_path, }\StringTok{"Processed/"}\NormalTok{, out\_file\_name)}
+\NormalTok{sheets }\OtherTok{\textless{}{-}} \FunctionTok{list}\NormalTok{(}\StringTok{"cp\_settings"} \OtherTok{=}\NormalTok{ processed\_ASIC\_cp\_settings, }
+               \StringTok{"var\_parm\_settings\_post\_r"} \OtherTok{=}\NormalTok{ processed\_ASIC\_post\_r\_var\_settings)}
+\FunctionTok{write\_xlsx}\NormalTok{(sheets, out\_path)}
+\end{Highlighting}
+\end{Shaded}
+
+
+\end{document}

@@ -33,6 +33,9 @@
 ####                  of sim_id (didn't seem like the change took last time)
 ####        18 JUN 2024 (GJD) - Changed name of Expand_Driver_File() to 
 ####                  Expand_Driver_File_Pre_R()
+####        29 JUL 2024 (GJD) - Converted input of Expand_Driver_File_Pre_R()
+####                  to be a data frame to clean up issues when
+####                  cond_param_setting_pre_r is non-numeric
 
 
 # Expand Driver File
@@ -41,6 +44,8 @@
 ### raw_driver_row = Row of raw driver file
 #### Returns expanded driver file with one row for each simulation setting
 Expand_Driver_File_Pre_R <- function(raw_driver_file){
+  #Force into data frame
+  raw_driver_file <- as.data.frame(raw_driver_file)
   #Columns that can contain lists
   list_columns <- c("sample_sizes")
   static_data <- raw_driver_file[, !(names(raw_driver_file)%in%list_columns)]
@@ -56,7 +61,7 @@ Expand_Driver_File_Pre_R <- function(raw_driver_file){
     temp_expanded_data_row <- 
       expand.grid(sample_size = eval(parse(text=raw_driver_file[row,"sample_sizes"])))
     temp_expanded_data_row$cond_param_setting_pre_r <- 
-      as.numeric(raw_driver_file[row,"cond_param_setting_pre_r"][1])
+      raw_driver_file[row,"cond_param_setting_pre_r"]
     temp_expanded_data <- rbind(temp_expanded_data, 
                                 temp_expanded_data_row)
   }

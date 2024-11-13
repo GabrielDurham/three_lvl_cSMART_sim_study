@@ -1,6 +1,8 @@
 ---
 title: "Check Distribution Consistency"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 This is code to check whether the empirical marginal/conditional distributions
@@ -50,13 +52,12 @@ pre_r_mc_parms <- Import_Pre_R_MC_Results(path=pre_r_param_path,
 
 
 ```{r Get Driver Parms for Distribution Check}
-# UGA vs FSU - 2023 Orange Bowl
-set.seed(633)
+
 # Get Driver Parms for Distribution Check
 check_driver_parms <- Process_Driver_Row_for_Check(driver=full_driver[["driver"]], 
-                                                   sim_label="test-small-n-20",
+                                                   sim_label="ASIC_Primary_20",
                                                    cluster_size=2, 
-                                                   n_clusters=150000)
+                                                   n_clusters=250000)
 check_sim_parms <- Derive_Sim_Parms(driver_parms=check_driver_parms, 
                                     cp_settings_df=full_driver[["cp_settings"]],
                                     pre_r_marg_parms=full_driver[["var_parms_pre_r"]], 
@@ -65,10 +66,23 @@ check_sim_parms <- Derive_Sim_Parms(driver_parms=check_driver_parms,
 ```
 
 ```{r Simulate Data}
+# UGA vs FSU - 2023 Orange Bowl
+set.seed(633)
 # Simulate Data
 check_data <- Sim_SMART_Data_Wide(driver_parms=check_driver_parms, 
                                   sim_parms=check_sim_parms)
 ```
+
+
+
+```{r}
+# Compare Distributions
+check_results <- Check_Distribution_Consistency(driver_parms=check_driver_parms,
+                                                wide_data=check_data,
+                                                sim_parms=check_sim_parms,
+                                                cluster_size=2)
+```
+
 
 
 ```{r Store Output}
@@ -101,4 +115,26 @@ formatted_check_d_1_1 <- Display_Topline_Consistency(consistency_check=check_res
                                                      title="Distribution For Embedded DTR (1,1)")
 ```
 
+```{r}
+# Display topline consistency
+formatted_check_d_1_m1 <- Display_Topline_Consistency(consistency_check=check_results,
+                                                      dtr="d_1_m1",
+                                                      title="Distribution For Embedded DTR (1,-1)")
+```
 
+
+
+```{r}
+# Display topline consistency
+formatted_check_d_m1_1 <- Display_Topline_Consistency(consistency_check=check_results,
+                                                      dtr="d_m1_1",
+                                                      title="Distribution For Embedded DTR (-1,1)")
+```
+
+
+```{r}
+# Display topline consistency
+formatted_check_d_m1_m1 <- Display_Topline_Consistency(consistency_check=check_results,
+                                                       dtr="d_m1_m1",
+                                                       title="Distribution For Embedded DTR (-1,-1)")
+```

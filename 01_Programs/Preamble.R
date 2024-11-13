@@ -22,6 +22,7 @@ library(stats)
 library(doRNG)
 library(doParallel)
 library(xtable)
+library(writexl)
 # suppressWarnings(library(readxl))
 # suppressWarnings(library(openxlsx))
 # suppressWarnings(library(dplyr))
@@ -32,6 +33,7 @@ library(xtable)
 # Establish paths
 notes_path <- "../00_Notes/"
 pre_r_param_path <- "../00_Notes/Pre_R_MC_Parameters/"
+ASIC_parms_path <- "../00_Notes/Sim_Parms_From_ASIC/"
 helper_funcs_path <- "Functions/"
 model_fit_func_path <- "Functions/Model_Fitting/"
 data_path <- "../02_Data/"
