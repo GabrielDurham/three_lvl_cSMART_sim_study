@@ -7,7 +7,7 @@ output:
   pdf_document: default
 ---
 
-This is scratch code to process ASIC Parameters
+This code processes ASIC Parameters
 
 ```{r Load in Preamble}
 # Load in packages and file paths
@@ -33,7 +33,9 @@ source(file=paste0(helper_funcs_path, "Process_ASIC_Parms.R"))
 
 ```{r}
 # Set Date Flag
-file_suff <- "_20240919.csv"
+#file_suff <- "_20240919.csv"
+file_suff <- "_20250208.csv"
+
 cp_settings_df <- 
   read.csv(file=paste0(ASIC_parms_path, "Raw/cond_param_settings", file_suff))
 var_parm_settings_pre_r <- 
@@ -117,19 +119,12 @@ ES_table_settings <-
                             var_parm_settings_post_r=var_parm_settings_post_r,
                             pre_r_cond_parms=pre_r_mc_parms,
                             type="eff_size", 
-                            eff_sizes=c(0.2, 0.5, 0.8, 1.2), 
+                            eff_sizes=c(0.2, 0.5, 0.8, 1, 1.2), 
                             comp=c("d_1_1", "d_m1_m1"), 
                             notes_base="Eff_Size_Table", 
-                            cluster_sizes=c(2,3))
+                            cluster_sizes=c(2))
 processed_ASIC_cp_settings <- rbind(processed_ASIC_cp_settings, ES_table_settings)
 ```
-
-
-```{r}
-
-```
-
-
 
 
 
@@ -142,9 +137,9 @@ Grab_Sample_Size(cp_settings=ES_table_settings,
                             var_parm_settings_pre_r=var_parm_settings_pre_r, 
                             var_parm_settings_post_r=var_parm_settings_post_r,
                             pre_r_cond_parms=pre_r_mc_parms,
-                            eff_sizes=c(0.2, 0.5, 0.8, 1.2), 
+                            eff_sizes=c(0.2, 0.5, 0.8, 1, 1.2), 
                             comp=c("d_1_1", "d_m1_m1"), 
-                            cluster_sizes=c(2,3))
+                            cluster_sizes=c(2))
 ```
 
 
@@ -154,7 +149,7 @@ Grab_Sample_Size(cp_settings=ES_table_settings,
 
 
 ```{r}
-# Grab CP Settings for Working Variance Misspecification
+# Grab CP Settings for Working Variance Misspecification - y
 unstructured_setting <- 
   Process_Variance_Settings(cp_settings_df=cp_settings_df, 
                             cp_setting_base="y_v.thet.dhet_d.Un.het_od.Un.het", 
@@ -251,10 +246,10 @@ ES_table_low_cor_settings <-
                             var_parm_settings_post_r=var_parm_settings_post_r,
                             pre_r_cond_parms=pre_r_mc_parms,
                             type="eff_size",
-                            eff_sizes=c(0.2, 0.5, 0.8, 1.2), 
+                            eff_sizes=c(0.2, 0.5, 0.8, 1, 1.2), 
                             comp=c("d_1_1", "d_m1_m1"),
                             notes_base="Eff_Size_Table_Low_C",
-                            cluster_sizes=c(2,3))
+                            cluster_sizes=c(2))
 processed_ASIC_cp_settings <- rbind(processed_ASIC_cp_settings, 
                                     ES_table_low_cor_settings)
 ```
@@ -266,10 +261,203 @@ Grab_Sample_Size(cp_settings=ES_table_low_cor_settings,
                             var_parm_settings_pre_r=var_parm_settings_pre_r, 
                             var_parm_settings_post_r=var_parm_settings_post_r,
                             pre_r_cond_parms=pre_r_mc_parms,
-                            eff_sizes=c(0.2, 0.5, 0.8, 1.2), 
+                            eff_sizes=c(0.2, 0.5, 0.8, 1, 1.2), 
                             comp=c("d_1_1", "d_m1_m1"), 
-                            cluster_sizes=c(2,3))
+                            cluster_sizes=c(2))
 ```
+
+
+
+
+```{r}
+# Grab CP settings for table with time homogenization
+
+
+# Already used "y_v.thet.dhom_d.AR.hom_od.Ex.hom" and saw we had to modify it
+# modified the settings and saved in hom_cp_settings_df 
+print("Y - T Het")
+y_thet_cp_settings_df <- hom_cp_settings_df
+t_pool_y_thet_settings <-
+  Process_Variance_Settings(cp_settings_df=y_thet_cp_settings_df,
+                            cp_setting_base="y_v.thet.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="t_Pooling_y_Het",
+                            cluster_sizes=c(2,3))
+print("Y_tot - T Het")
+t_pool_ytot_thet_settings <-
+  Process_Variance_Settings(cp_settings_df=cp_settings_df,
+                            cp_setting_base="ytot_v.thet.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="t_Pooling_ytot_Het",
+                            cluster_sizes=c(2,3))
+# Issue with inconsistent variance settings - Fix by overwriting mean_2
+# of d_m1_1 with that of d_m1_m1 (won't affect any d_1_1/d_m1_m1 comparisons)
+prob_setting <- "ytot_v.thet.dhom_d.AR.hom_od.Ex.hom"
+temp_cps_df <- cp_settings_df[cp_settings_df$cond_parm_setting==prob_setting, ]
+temp_cps_df[temp_cps_df$dtr=="d_m1_1", "mean_2"] <- 
+  temp_cps_df[temp_cps_df$dtr=="d_m1_m1", "mean_2"]
+
+t_pool_ytot_thet_settings <-
+  Process_Variance_Settings(cp_settings_df=temp_cps_df,
+                            cp_setting_base="ytot_v.thet.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="t_Pooling_ytot_Het",
+                            cluster_sizes=c(2,3))
+print("Y - T Hom")
+t_pool_y_thom_settings <-
+  Process_Variance_Settings(cp_settings_df=cp_settings_df,
+                            cp_setting_base="y_v.thom.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="t_Pooling_y_Hom",
+                            cluster_sizes=c(2,3))
+# Issue with inconsistent variance settings - Fix by overwriting mean/variance
+# of d_m1_1 with that of d_m1_m1 (won't affect any d_1_1/d_m1_m1 comparisons)
+prob_setting <- "y_v.thom.dhom_d.AR.hom_od.Ex.hom"
+temp_cps_df <- cp_settings_df[cp_settings_df$cond_parm_setting==prob_setting, ]
+temp_cps_df[temp_cps_df$dtr=="d_m1_1", "mean_2"] <- 
+  temp_cps_df[temp_cps_df$dtr=="d_m1_m1", "mean_2"]
+# Now do the same to d_1_1 and d_1_m1, but need to shift responder mean_2 to avoid
+# issues
+temp_cps_df[1, "mean_2"] <- 
+  temp_cps_df[temp_cps_df$dtr=="d_1_1", "mean_2"] + 
+  (temp_cps_df[1, "mean_2"] - temp_cps_df[temp_cps_df$dtr=="d_1_m1", "mean_2"])
+temp_cps_df[temp_cps_df$dtr=="d_1_m1", "mean_2"] <- 
+  temp_cps_df[temp_cps_df$dtr=="d_1_1", "mean_2"]
+t_pool_ytot_thom_settings <-
+  Process_Variance_Settings(cp_settings_df=temp_cps_df,
+                            cp_setting_base="y_v.thom.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="t_Pooling_y_Hom",
+                            cluster_sizes=c(2,3))
+
+
+
+
+print("Y_tot - T Hom")
+t_pool_ytot_thom_settings <-
+  Process_Variance_Settings(cp_settings_df=cp_settings_df,
+                            cp_setting_base="ytot_v.thom.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="t_Pooling_ytot_Hom",
+                            cluster_sizes=c(2,3))
+# Issue with inconsistent variance settings - Fix by overwriting mean/variance
+# of d_m1_1 with that of d_m1_m1 (won't affect any d_1_1/d_m1_m1 comparisons)
+prob_setting <- "ytot_v.thom.dhom_d.AR.hom_od.Ex.hom"
+temp_cps_df <- cp_settings_df[cp_settings_df$cond_parm_setting==prob_setting, ]
+temp_cps_df[1, "mean_2"] <- 
+  temp_cps_df[temp_cps_df$dtr=="d_1_1", "mean_2"] + 
+  (temp_cps_df[1, "mean_2"] - temp_cps_df[temp_cps_df$dtr=="d_1_m1", "mean_2"])
+temp_cps_df[temp_cps_df$dtr=="d_1_m1", "mean_2"] <- 
+  temp_cps_df[temp_cps_df$dtr=="d_1_1", "mean_2"]
+
+t_pool_ytot_thom_settings <-
+  Process_Variance_Settings(cp_settings_df=temp_cps_df,
+                            cp_setting_base="ytot_v.thom.dhom_d.AR.hom_od.Ex.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r,
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"),
+                            notes_base="t_Pooling_ytot_Hom",
+                            cluster_sizes=c(2,3))
+
+
+processed_ASIC_cp_settings <- rbind(processed_ASIC_cp_settings, 
+                                    t_pool_y_thet_settings,
+                                    t_pool_ytot_thet_settings,
+                                    t_pool_y_thom_settings,
+                                    t_pool_ytot_thom_settings)
+```
+
+
+
+
+
+```{r}
+print("Y_tot - Complex Variance")
+
+complex_setting_ytot <- 
+  Process_Variance_Settings(cp_settings_df=cp_settings_df, 
+                            cp_setting_base="ytot_v.thet.dhom_d.AR.hom_od.Un.hom", 
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            notes_base="WV_Misspec_yTot", 
+                            cluster_sizes=c(2,3))
+
+processed_ASIC_cp_settings <- rbind(processed_ASIC_cp_settings, 
+                                    complex_setting_ytot)
+
+```
+
+
+
+
+
+
+```{r}
+print("Y_tot - Simple Variance")
+
+simple_setting_ytot <- 
+  Process_Variance_Settings(cp_settings_df=cp_settings_df, 
+                            cp_setting_base="ytot_v.thom.dhom_d.In.hom_od.In.hom",
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            notes_base="WV_Misspec_yTot_Simp", 
+                            cluster_sizes=c(2,3))
+
+message("Overwriting (-1,1) marginal mean_2 and (-1,.) conditional (R) mean_2 to (-1,-1) marginal mean_2")
+# Issue with inconsistent variance settings - Fix by overwriting mean of A1=-1 responders and
+# of d_m1_1 with that of d_m1_m1 (won't affect any d_1_1/d_m1_m1 comparisons)
+prob_setting <- "ytot_v.thom.dhom_d.In.hom_od.In.hom"
+temp_cps_df <- cp_settings_df[cp_settings_df$cond_parm_setting==prob_setting, ]
+temp_cps_df[2, "mean_2"] <- temp_cps_df[6, "mean_2"]
+temp_cps_df[5, "mean_2"] <- temp_cps_df[6, "mean_2"]
+simple_setting_ytot <- 
+  Process_Variance_Settings(cp_settings_df=temp_cps_df, 
+                            cp_setting_base=prob_setting,
+                            var_parm_settings_pre_r=var_parm_settings_pre_r, 
+                            var_parm_settings_post_r=var_parm_settings_post_r,
+                            pre_r_cond_parms=pre_r_mc_parms,
+                            type="n",
+                            comp=c("d_1_1", "d_m1_m1"), 
+                            notes_base="WV_Misspec_yTot_Simp", 
+                            cluster_sizes=c(2,3))
+
+processed_ASIC_cp_settings <- rbind(processed_ASIC_cp_settings, 
+                                    simple_setting_ytot)
+
+```
+
 
 
 

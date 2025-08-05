@@ -7,12 +7,16 @@
 00_Notes/Pre_R_MC_Parameters/Archive/*
 01_Programs/Scratch_Work/*
 01_Programs/*.html
+# But **include** this specific one
+!01_Programs/Create_Tables.html
 01_Programs/*.tex
 01_Programs/Functions/Model_Fitting/function_v3.5_1_SCRATCH.R
+01_Programs/Functions/Archive/*
 02_Data/*.zip
 03_Analysis/*.zip
 03_Analysis/*
 02_Data/*
+04_Output/Figures/Archive/*
 
 >>>>>>> 893df8768b1ce83a2d050a224a1c1e6dfb8efd67
 # History files

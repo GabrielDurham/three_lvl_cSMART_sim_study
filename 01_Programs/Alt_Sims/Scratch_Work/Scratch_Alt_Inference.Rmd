@@ -1,0 +1,95 @@
+---
+title: "Scratch_Alt_Inference"
+output: html_notebook
+---
+
+
+```{r Load in Preamble}
+# Load in packages and file paths
+source(file="Alt_Preamble.R")
+```
+
+```{r Load in Functions}
+# Pull in functions for general data maintenance
+source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
+# Pull in functions for pre-response MC simulations
+source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
+# Pull in functions for data simulation
+source(file=paste0(helper_funcs_path, "Simulate_SMART_Data.R"))
+# Pull in functions for alternate data generation
+source(file="Alt_Helper_Functions.R")
+# Pull in functions for model fitting
+source(file="Alt_Simulate_and_Fit_Data.R")
+# Pull in functions for inference with multiple time points
+source(file="Alt_Conduct_Inference.R")
+# Pull in model fitting function
+source(file=paste0(model_fit_func_path, "function_v3.5_1.R"))
+```
+
+```{r Read in Driver}
+# Define alternate fit settings
+alt_fit_settings_types_sheets <- list(c("static", "alt_fit_settings_static"))
+
+
+# Read in Driver File
+full_driver <- Read_Driver_File(path="Alt_Driver_Three_Level_Simulations.xlsx", 
+                                driver_sheet="multi_time", 
+                                cp_sheet="alt_cp_settings",
+                                var_parm_pre_r_sheet="var_parm_settings_pre_r",
+                                var_parm_post_r_sheet="var_parm_settings_post_r",
+                                fit_settings_sheet="fit_settings",
+                                alt_fit_settings_types_sheets=alt_fit_settings_types_sheets)
+
+
+```
+
+
+```{r}
+driver_row <- full_driver$driver[1,]
+driver_parms <- 
+    Process_Driver_Row_Main(driver_row=driver_row)
+cp_settings_df <- full_driver[["cp_settings"]]
+cp_settings <- 
+    cp_settings_df[cp_settings_df$alt_cp_setting==driver_parms[["cond_parm_setting"]], ]
+dist_data <- 
+    Build_All_Distribution_Mats(driver_parms=driver_parms, 
+                                cp_settings=cp_settings)
+```
+
+
+```{r}
+test_iter_output <- Run_Single_Iteration_Alt(driver_parms=driver_parms, 
+                         dist_data=dist_data, 
+                         fit_settings_df=full_driver$fit_settings,
+                         alt_fit_settings_dfs=full_driver$alt_fit_settings)
+```
+
+
+```{r}
+raw_sim_output <- readRDS(paste0(data_path, "/", "run_20250604g/sim_Alt-ASIC-Primary-20"))
+
+```
+
+
+
+```{r}
+inference_parms <- 
+  Pull_Inference_Parms_All_Fits(driver_parms=driver_parms, 
+                                fit_settings_df=full_driver[["fit_settings"]])
+# Conduct raw inference
+raw_sim_inference <- Conduct_Inference_for_Sim_Run(simulation_output=raw_sim_output, 
+                                                   driver_parms=driver_parms,
+                                                   inference_parms=inference_parms)
+dist_data <- 
+    Build_All_Distribution_Mats(driver_parms=driver_parms, 
+                                cp_settings=cp_settings)
+    
+# Calculate and merge on the true values
+true_diffs <- 
+      Derive_True_Diffs_Alt(driver_parms=driver_parms, 
+                            raw_sim_inference=raw_sim_inference,
+                            dist_data=dist_data,
+                            cp_settings=cp_settings,
+                            alt_fit_settings_dfs=full_driver[["alt_fit_settings"]])
+```
+

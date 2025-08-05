@@ -1,10 +1,10 @@
-#############################
-#############################
-#############################
-### SIMULATE_AND_FIT_DATA ###
-#############################
-#############################
-#############################
+#################################
+#################################
+#################################
+### ALT_SIMULATE_AND_FIT_DATA ###
+#################################
+#################################
+#################################
 
 #### PURPOSE: This file contains code that serves to support simulating and
 ####          fitting data given a sheet of a driver file
@@ -30,7 +30,6 @@
 ####                25 FEB 2025 - Changed to driver row seed
 ####                26 FEB 2025 - Changed max_attempts to driver row input
 ####                02 JUN 2025 - Incorporated crit_t, t_max, t_0 as driver parameters
-####                22 JUL 2025 - Added functionality for a oversaturated model fit
 
 
 
@@ -151,13 +150,8 @@ Create_Consistency_Mat_Prototypical <- function(sim_data) {
 ### driver_parms = Output of Process_Driver_Row_Main() function
 ### fit_number = The fit number in the driver row to use
 ### fit_settings_df = Dataframe of driver sheet of model fit settings
-### alt_fit = Boolean indicating whether the fit_number refers to an alt_fit
-Obtain_Fit_Parms <- function(driver_parms, fit_number, fit_settings_df,
-                             alt_fit=FALSE) {
-  if (alt_fit) {
-    fit_setting <- driver_parms[[paste0("alt_fit_setting_", fit_number)]]
-  } else {fit_setting <- driver_parms[[paste0("fit_setting_", fit_number)]]}
-  
+Obtain_Fit_Parms <- function(driver_parms, fit_number, fit_settings_df) {
+  fit_setting <- driver_parms[[paste0("fit_setting_", fit_number)]]
   fit_parm_row <- fit_settings_df[fit_settings_df$fit_setting==fit_setting,]
   
   Output <- NULL
@@ -173,32 +167,29 @@ Obtain_Fit_Parms <- function(driver_parms, fit_number, fit_settings_df,
 ### fit_number = The fit number in the driver row to use
 ### fit_settings_df = Dataframe of driver sheet of model fit settings
 ### sim_data = Simulated SMART data - Output of Sim_SMART_Data() function
-### oversat = Boolean indicating whether to use an oversaturated marginal model
 Pull_Function_Args <- function(driver_parms, fit_number, fit_settings_df,
-                               sim_data, oversat=FALSE) {
-  if (oversat) {alt_fit <- TRUE
-  } else {alt_fit <- FALSE}
+                               sim_data) {
   fit_parms <- Obtain_Fit_Parms(driver_parms=driver_parms, 
                                 fit_number=fit_number, 
-                                fit_settings_df=fit_settings_df,
-                                alt_fit=alt_fit)
-  
+                                fit_settings_df=fit_settings_df)
+  # Restrict data if we request it
+  if ("t_to_model" %in% names(fit_parms)) {
+    if (fit_parms[["t_to_model"]]=="saturated") {
+      t_to_model <- 
+        c(driver_parms[["t_0"]], driver_parms[["crit_t"]], driver_parms[["t_max"]])
+      sim_data <- sim_data[sim_data$t %in% t_to_model, ]
+    }
+  }
+
   Output <- NULL
   Output[["N"]] <- length(unique(sim_data$cluster_id))
   Output[["M"]] <- as.vector(table(sim_data[sim_data$t==0, "cluster_id"]))
-  Output[["max_T"]] <- driver_parms[["t_max"]] + 1
+  Output[["max_T"]] <- length(unique(sim_data$t))
   Output[["Ind"]] <- Create_Ind_Mat(driver_parms=driver_parms)
   Output[["D"]] <- nrow(Output[["Ind"]])
   Output[["Y"]] <- sim_data$y
-  
-  if (oversat) {
-    Output[["X"]] <- Create_Partial_Design_Mats_Oversat(driver_parms=driver_parms, 
-                                                        sim_data=sim_data)
-  } else {
-    Output[["X"]] <- Create_Partial_Design_Mats(driver_parms=driver_parms, 
-                                                sim_data=sim_data)
-  }
-  
+  Output[["X"]] <- Create_Partial_Design_Mats(driver_parms=driver_parms, 
+                                              sim_data=sim_data)
   Output[["within"]] <- Create_Consistency_Mat(driver_parms=driver_parms, 
                                                sim_data=sim_data)
   Output[["weight"]] <- 1/rowSums(Output[["within"]])
@@ -300,14 +291,14 @@ Fit_Model <- function(driver_parms, fit_number, fit_settings_df, sim_data) {
 
 # Run a Single Iteration of a Driver Row
 ### driver_parms = Output of Process_Driver_Row_Main() function
-### sim_parms = Output of Derive_Sim_Parms() function
+### dist_data = Output from Build_All_Distribution_Mats() function
 ### fit_settings_df = Dataframe of driver sheet of model fit settings
 ### alt_fit_settings_dfs = List of dataframe of driver sheets of alternate model 
 ###                        fit settings (indexed by alternate fit types)
-Run_Single_Iteration <- function(driver_parms, sim_parms, fit_settings_df,
-                                 alt_fit_settings_dfs) {
-  sim_data <- Sim_SMART_Data(driver_parms=driver_parms,
-                             sim_parms=sim_parms)
+Run_Single_Iteration_Alt <- function(driver_parms, dist_data, fit_settings_df,
+                                     alt_fit_settings_dfs) {
+  sim_data <- Sim_SMART_Data_Alt(driver_parms=driver_parms, 
+                                 dist_data=dist_data)
   Output <- NULL
   if (driver_parms[["n_fit"]]>0) {
     for (fit_i in (1:driver_parms[["n_fit"]])) {
@@ -316,8 +307,10 @@ Run_Single_Iteration <- function(driver_parms, sim_parms, fit_settings_df,
                                        fit_number=fit_i, 
                                        fit_settings_df=fit_settings_df, 
                                        sim_data=sim_data)
+      
     }
   }
+  
   if (driver_parms[["n_alt_fit"]]>0) {
     for (alt_fit_i in (1:driver_parms[["n_alt_fit"]])) {
       out_label <- paste0("alt_fit_", alt_fit_i)
@@ -327,28 +320,23 @@ Run_Single_Iteration <- function(driver_parms, sim_parms, fit_settings_df,
                                alt_fit_number=alt_fit_i, 
                                static_alt_fit_settings_df=alt_fit_settings_dfs[["static"]], 
                                sim_data=sim_data)
-      } else if (driver_parms[[paste0("alt_fit_type_", alt_fit_i)]]=="oversat") {
-        Output[[out_label]] <- 
-          Fit_Alt_Model_Oversat(driver_parms=driver_parms, 
-                                alt_fit_number=alt_fit_i, 
-                                fit_settings_df=fit_settings_df, 
-                                sim_data=sim_data)
       }
     }
   }
+  
   return(Output)
 }
 
 
 # Run a Multiple Iterations of a Driver Row
 ### driver_parms = Output of Process_Driver_Row_Main() function
-### sim_parms = Output of Derive_Sim_Parms() function
+### dist_data = Output from Build_All_Distribution_Mats() function
 ### fit_settings_df = Dataframe of driver sheet of model fit settings
 ### alt_fit_settings_dfs = List of dataframe of driver sheets of alternate model 
 ###                        fit settings (indexed by alternate fit types)
 ### iter_list = List of iteration numbers (to serve as output labels)
-Run_Multiple_Iterations <- function(driver_parms, sim_parms, fit_settings_df, 
-                                    alt_fit_settings_dfs, iter_list) {
+Run_Multiple_Iterations_Alt <- function(driver_parms, dist_data, fit_settings_df, 
+                                        alt_fit_settings_dfs, iter_list) {
   Output <- NULL
   max_attempts <- driver_parms[["max_attempts"]]
   for (iter in (1:length(iter_list))) {
@@ -356,16 +344,17 @@ Run_Multiple_Iterations <- function(driver_parms, sim_parms, fit_settings_df,
     # Allow multiple runs before a fatal error arises
     for (attempt in (1:max_attempts)) {
       tryCatch({
-        iter_output <- Run_Single_Iteration(driver_parms=driver_parms, 
-                                            sim_parms=sim_parms, 
-                                            fit_settings_df=fit_settings_df,
-                                            alt_fit_settings_dfs=alt_fit_settings_dfs)
+        iter_output <- 
+          Run_Single_Iteration_Alt(driver_parms=driver_parms, 
+                                   dist_data=dist_data, 
+                                   fit_settings_df=fit_settings_df,
+                                   alt_fit_settings_dfs=alt_fit_settings_dfs)
         break  # Exit the loop if successful
       }, error = function(e) {
-      if (attempt == max_attempts) {
-        stop("All attempts to run Run_Single_Iteration() have failed.")
-      }
-    })
+        if (attempt == max_attempts) {
+          stop("All attempts to run Run_Single_Iteration_Alt() have failed.")
+        }
+      })
     }
     for (storage_label in names(iter_output)) {
       Output[[storage_label]][[iter]] <- iter_output[[storage_label]]
@@ -376,24 +365,26 @@ Run_Multiple_Iterations <- function(driver_parms, sim_parms, fit_settings_df,
 
 
 # Execute a Row of a Driver File
-### full_driver = Output of Read_Driver_File() function
+### alt_driver = Output of Read_Driver_File() function
 ### driver_rowname = Rowname of driver file to execute
 ### pre_r_mc_parms = Output of Import_Pre_R_MC_Results() function
 ### do_par = Boolean indicating whether to parallelize
 ### n_threads = Number of parallel threads to run, used if do_par==TRUE
 ###             Note: Parallelization done using doRNG package, ensuring
 ###                   replicability with respect to random seed
-Execute_Driver_Row <- function(full_driver, driver_rowname, pre_r_mc_parms,
-                               do_par=FALSE, n_threads=1) {
-  driver_parms <- Process_Driver_Row_Main(driver_row=full_driver[["driver"]][driver_rowname,])
-  sim_parms <- Derive_Sim_Parms(driver_parms=driver_parms,
-                                cp_settings_df=full_driver[["cp_settings"]],
-                                pre_r_marg_parms=full_driver[["var_parms_pre_r"]],
-                                pre_r_cond_parms=pre_r_mc_parms, 
-                                post_r_var_parms=full_driver[["var_parms_post_r"]])
+Execute_Driver_Row_Alt <- function(alt_driver, driver_rowname,
+                                   do_par=FALSE, n_threads=1) {
+  driver_parms <- 
+    Process_Driver_Row_Main(driver_row=alt_driver[["driver"]][driver_rowname,])
+  cp_settings_df <- alt_driver[["cp_settings"]]
+  cp_settings <- 
+    cp_settings_df[cp_settings_df$alt_cp_setting==driver_parms[["cond_parm_setting"]], ]
+  dist_data <- 
+    Build_All_Distribution_Mats(driver_parms=driver_parms, 
+                                cp_settings=cp_settings)
   Output <- NULL
   Output[["driver_parms"]] <- driver_parms
-  Output[["sim_parms"]] <- sim_parms
+  Output[["dist_data"]] <- dist_data
   # Set a seed prior to each row being run
   set.seed(driver_parms[["seed"]])
   #Parallelize
@@ -401,11 +392,11 @@ Execute_Driver_Row <- function(full_driver, driver_rowname, pre_r_mc_parms,
   if (do_par) {
     iter_partitions <- Partition_Vector(vec=(1:driver_parms[["n_iter"]]), k=n_threads)
     partitioned_output <- foreach(i=1:n_threads) %dorng% {
-      Run_Multiple_Iterations(driver_parms=driver_parms, 
-                              sim_parms=sim_parms, 
-                              fit_settings_df=full_driver[["fit_settings"]], 
-                              alt_fit_settings_dfs=full_driver[["alt_fit_settings"]],
-                              iter_list=iter_partitions[[i]])
+      Run_Multiple_Iterations_Alt(driver_parms=driver_parms, 
+                                  dist_data=dist_data, 
+                                  fit_settings_df=alt_driver[["fit_settings"]], 
+                                  alt_fit_settings_dfs=alt_driver[["alt_fit_settings"]],
+                                  iter_list=iter_partitions[[i]])
     }
     #Merge Output
     temp_output <- NULL
@@ -418,55 +409,49 @@ Execute_Driver_Row <- function(full_driver, driver_rowname, pre_r_mc_parms,
     }
     Output <- temp_output
   } else {
-    Output <- Run_Multiple_Iterations(driver_parms=driver_parms, 
-                                      sim_parms=sim_parms, 
-                                      fit_settings_df=full_driver[["fit_settings"]], 
-                                      alt_fit_settings_dfs=full_driver[["alt_fit_settings"]],
-                                      iter_list=(1:driver_parms[["n_iter"]]))
+    Output <- 
+      Run_Multiple_Iterations_Alt(driver_parms=driver_parms, 
+                                  dist_data=dist_data, 
+                                  fit_settings_df=alt_driver[["fit_settings"]], 
+                                  alt_fit_settings_dfs=alt_driver[["alt_fit_settings"]],
+                                  iter_list=(1:driver_parms[["n_iter"]]))
   }
   
   return(Output)
 }
 
 
-# Execute a Main Sheet of a Driver File
-### full_driver = Output of Read_Driver_File() function
-### pre_r_mc_parms = Output of Import_Pre_R_MC_Results() function
+# Execute a Main Sheet of a Driver File - Alternate
+### alt_driver = Output of Read_Driver_File() function
 ### do_par = Boolean indicating whether to parallelize
 ### n_threads = Number of parallel threads to run, used if do_par==TRUE
 ###             Note: Parallelization done using doRNG package, ensuring
 ###                   replicability with respect to random seed
 ### path = Path with past output stored
 ### folder_name = Folder name to store output
-Execute_Driver_File_Main <- function(full_driver, pre_r_mc_parms, 
-                                     do_par=FALSE, n_threads=1,
-                                     path, folder_name) {
+Execute_Driver_File_Main_Alt <- function(alt_driver, do_par=FALSE, n_threads=1,
+                                         path, folder_name) {
   # Create folder to store output
   dir.create(file.path(path, folder_name))
-  for (row in rownames(full_driver[["driver"]])) {
-    if (full_driver[["driver"]][row, "run_simulation"]==1) {
-      row_output <- Execute_Driver_Row(full_driver=full_driver,
-                                       driver_rowname=row,
-                                       pre_r_mc_parms=pre_r_mc_parms,
-                                       do_par=do_par,
-                                       n_threads=n_threads)
+  for (row in rownames(alt_driver[["driver"]])) {
+    if (alt_driver[["driver"]][row, "run_simulation"]==1) {
+      row_output <- Execute_Driver_Row_Alt(alt_driver=alt_driver,
+                                           driver_rowname=row,
+                                           do_par=do_par,
+                                           n_threads=n_threads)
       saveRDS(object=row_output, 
               file=paste0(path, folder_name, 
-                          paste0("/sim_", full_driver[["driver"]][row,"sim_label"])))
+                          paste0("/sim_", alt_driver[["driver"]][row,"sim_label"])))
     }
   }
-  saveRDS(object=full_driver, 
+  saveRDS(object=alt_driver, 
           file=paste0(path, folder_name, "/Driver"))
-  saveRDS(object=pre_r_mc_parms, 
-          file=paste0(path, folder_name, "/Pre_R_MC_Parms"))
 }
 
 
 
 
 #### Alternate model fitting
-
-### Static Model
 
 # Fit an Alternate Model Given Data
 ### driver_parms = Output of Process_Driver_Row_Main() function
@@ -516,10 +501,10 @@ Pull_Function_Args_Alt_Static <- function(driver_parms, alt_fit_number,
   alt_fit_setting <- driver_parms[[paste0("alt_fit_setting_", alt_fit_number)]]
   fit_settings <- 
     static_alt_fit_settings_df[static_alt_fit_settings_df$alt_fit_setting==alt_fit_setting,]
-  
   Output <- NULL
   static_data <- Collapse_Sim_Data(sim_data=sim_data, 
                                    outcome_type=fit_settings$outcome_type)
+  
   Output[["Y"]] <- static_data$y
   if (driver_parms[["n_covar"]]>0) {
     Output[["X"]] <- static_data[,driver_parms[["covars"]]]
@@ -565,99 +550,5 @@ Collapse_Sim_Data <- function(sim_data, outcome_type) {
   Output <- temp_output[order(temp_output$cluster_id, temp_output$person_id),
                         !(names(sim_data)=="t")]
   
-  return(Output)
-}
-
-
-### Oversaturated Model
-
-
-# Create Partial Design Matrices for Oversaturated Marginal Mean Model SMART
-## Partition into coefficients of main decisions
-### driver_parms = Output of Process_Driver_Row_Main() function
-### sim_data = Simulated SMART data - Output of Sim_SMART_Data() function
-Create_Partial_Design_Mats_Oversat <- function(driver_parms, sim_data) {
-  if (driver_parms[["SMART_structure"]]=="prototypical") {
-    Output <- 
-      Create_Partial_Design_Mats_Prototypical_Oversat(driver_parms=driver_parms, 
-                                                      sim_data=sim_data)
-  }
-  return(Output)
-}
-
-# Create Design Matrices for Oversaturated Marginal Mean Model of Prototypical SMART
-## Partition into coefficients of 1, a_1, a_2nr and a_1*a_2nr
-### driver_parms = Output of Process_Driver_Row_Main() function
-### sim_data = Simulated SMART data - Output of Sim_SMART_Data() function
-Create_Partial_Design_Mats_Prototypical_Oversat <- function(driver_parms, sim_data) {
-  N <- nrow(sim_data)
-  
-  t_0_rows <- ifelse(sim_data$t==driver_parms[["t_0"]], 1, 0)
-  crit_t_rows <- ifelse(sim_data$t==driver_parms[["crit_t"]], 1, 0)
-  t_max_rows <- ifelse(sim_data$t==driver_parms[["t_max"]], 1, 0)
-  covars <- as.matrix(sim_data[,driver_parms[["covars"]]])
-  
-  Output <- NULL
-  Output[["ones"]] <- 
-    as.matrix(cbind(t_0_rows, crit_t_rows, t_max_rows, covars))
-  colnames(Output[["ones"]])[1:3] <- 
-    c("theta_0_t_0", "theta_0_crit_t", "theta_0_t_max")
-  
-  sat_matrix <- as.matrix(cbind(t_0_rows, crit_t_rows, t_max_rows))
-  
-  Output[["a_1"]] <- sat_matrix
-  colnames(Output[["a_1"]]) <- 
-    c("theta_1_t_0", "theta_1_crit_t", "theta_1_t_max")
-  Output[["a_2nr"]] <- sat_matrix
-  colnames(Output[["a_2nr"]]) <- 
-    c("theta_2_t_0", "theta_2_crit_t", "theta_2_t_max")
-  Output[["a_1*a_2nr"]] <- sat_matrix
-  colnames(Output[["a_1*a_2nr"]]) <- 
-    c("theta_3_t_0", "theta_3_crit_t", "theta_3_t_max")
-  
-  return(Output)
-}
-
-# Fit an Alternate Oversaturated Model Given Data
-### driver_parms = Output of Process_Driver_Row_Main() function
-### alt_fit_number = The alternate fit number in the driver row to use
-### fit_settings_df = Dataframe of driver sheet of model fit settings
-###   (Can just use normal one)
-### sim_data = Simulated SMART data - Output of Sim_SMART_Data() function
-Fit_Alt_Model_Oversat <- function(driver_parms, 
-                                  alt_fit_number, 
-                                  fit_settings_df, 
-                                  sim_data) {
-  
-  fit_args <- Pull_Function_Args(driver_parms=driver_parms, 
-                                 fit_number=alt_fit_number, 
-                                 fit_settings_df=fit_settings_df,
-                                 sim_data=sim_data,
-                                 oversat=TRUE)
-  
-  Output <- solve_SMART_Multilayer(N=fit_args[["N"]],
-                                   M=fit_args[["M"]],
-                                   max_T=fit_args[["max_T"]],
-                                   D=fit_args[["D"]],
-                                   Ind=fit_args[["Ind"]],
-                                   Y=fit_args[["Y"]],
-                                   X=fit_args[["X"]],
-                                   within=fit_args[["within"]],
-                                   weight=fit_args[["weight"]],
-                                   var_homo_across_time=fit_args[["var_homo_across_time"]],
-                                   var_homo_across_AI=fit_args[["var_homo_across_AI"]],
-                                   diagonal_structure=fit_args[["diagonal_structure"]],
-                                   diagonal_homo_across_AI=fit_args[["diagonal_homo_across_AI"]],
-                                   diagonal_ICC_lower_thresh=fit_args[["diagonal_ICC_lower_thresh"]],
-                                   off_diagonal_structure=fit_args[["off_diagonal_structure"]],
-                                   off_diagonal_homo_across_AI=fit_args[["off_diagonal_homo_across_AI"]],
-                                   off_diagonal_ICC_lower_thresh=fit_args[["off_diagonal_ICC_lower_thresh"]],
-                                   max_iter=fit_args[["max_iter"]],
-                                   dof_adjustment=fit_args[["dof_adjustment"]],
-                                   use_t=fit_args[["use_t"]],
-                                   verbose=0)
-  reformatted_components <- Reformat_Output(model_fit_output=Output)
-  Output[["summary_paras"]] <- reformatted_components[["summary_paras"]]
-  Output[["var_estimator"]] <- reformatted_components[["var_estimator"]]
   return(Output)
 }

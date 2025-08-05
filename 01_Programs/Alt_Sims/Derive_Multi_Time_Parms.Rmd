@@ -1,0 +1,263 @@
+---
+title: "Derive_Multi_Time_Parms"
+output: html_notebook
+---
+
+Derive parameters for >3 time point simulations
+
+```{r Load in Preamble}
+# Load in packages and file paths
+source(file="Alt_Preamble.R")
+```
+
+```{r}
+# Pull in functions for general data maintenance
+source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
+# Pull in functions for pre-response MC simulations
+source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
+# Pull in functions for collecting all simulation parameters
+source(file=paste0(helper_funcs_path, "Derive_Sim_Parameters.R"))
+```
+
+
+```{r Read in Driver}
+# Define alternate fit settings
+alt_fit_settings_types_sheets <- list(c("static", "alt_fit_settings_static"))
+
+
+# Read in Driver File
+full_driver <- Read_Driver_File(path=paste0(notes_path, "Driver_Three_Level_Simulations.xlsx"), 
+                                driver_sheet="main", 
+                                cp_sheet="cond_param_settings",
+                                var_parm_pre_r_sheet="var_parm_settings_pre_r",
+                                var_parm_post_r_sheet="var_parm_settings_post_r",
+                                fit_settings_sheet="fit_settings",
+                                alt_fit_settings_types_sheets=alt_fit_settings_types_sheets)
+```
+
+
+```{r Read in Conditional Parameters}
+# Read in Conditional Parameters
+pre_r_mc_parms <- 
+  Import_Pre_R_MC_Results(path=pre_r_param_path, 
+                          pre_r_marg_parms=full_driver[["var_parms_pre_r"]],
+                          prefix="parameters_")
+```
+
+```{r}
+target_cp_settings <- "ytot_v.thet.dhom_d.AR.hom_od.Ex.hom_ES_0.2"
+cp_settings_df <- 
+  full_driver[["cp_settings"]][full_driver[["cp_settings"]]$cond_parm_setting==target_cp_settings,]
+target_sim <- "ASIC-Eff-Size-y-n:2-ES:0.2"
+target_main_row <- 
+  full_driver[["driver"]][full_driver[["driver"]]$sim_label==target_sim, ]
+target_n <- 2
+target_sim_parms <- 
+  Derive_Sim_Parms(driver_parms=Process_Driver_Row_Main(target_main_row), 
+                   cp_settings_df=full_driver$cp_settings, 
+                   pre_r_marg_parms=full_driver$var_parms_pre_r, 
+                   pre_r_cond_parms=pre_r_mc_parms, 
+                   post_r_var_parms=full_driver$var_parms_post_r)[[paste0("n_", target_n)]]
+
+
+```
+
+```{r}
+# Target setting is DTR-homogeneous, AR1 within-person, exchangeable between-person
+ex_dist <- target_sim_parms[[1]][["dist"]][["marg"]]
+sigma2_0 <- ex_dist[["var"]][["sigma2_0"]]
+sigma2_1 <- ex_dist[["var"]][["sigma2_1"]]
+rho_01 <- ex_dist[["var"]][["rho_01"]]
+phi_01 <- ex_dist[["var"]][["phi_01"]]
+
+corr_wi_01 <- phi_01/sqrt(sigma2_0*sigma2_1)
+corr_bt <- rho_01/sqrt(sigma2_0*sigma2_1)
+
+print("****************")
+print("*** MARGINAL ***")
+print("****************")
+
+message("Within-Person AR1 Correlation: ", corr_wi_01)
+message("Between-Person ICC: ", corr_bt)
+
+for (r in c("R", "NR")) {
+  print("**********")
+  print(paste0("*** ", r, " ***"))
+  print("**********")
+  ex_dist_cond <- target_sim_parms[[1]][["dist"]][["cond"]][[r]]
+  sigma2_2 <- ex_dist_cond[["var"]][["sigma2_2"]]
+  sigma2_1 <- ex_dist_cond[["var"]][["sigma2_1"]]
+  rho_12 <- ex_dist_cond[["var"]][["rho_12"]]
+  phi_12 <- ex_dist_cond[["var"]][["phi_12"]]
+  
+  corr_wi_01 <- phi_12/sqrt(sigma2_1*sigma2_2)
+  corr_bt <- rho_12/sqrt(sigma2_1*sigma2_2)
+  message("Within-Person Conditional AR1 Correlation: ", corr_wi_01)
+  message("Between-Person Conditional ICC: ", corr_bt)
+
+}
+
+```
+
+```{r}
+t_0 <- 0
+crit_t <- 3
+t_T <- 6 
+
+
+dtr_list <- names(target_sim_parms)
+sim_trajectories <- NULL
+for (d in dtr_list) {
+  sim_trajectories[[d]] <- list(mean=NULL, var=NULL)
+  for (q in c("mean", "var")) {
+    dists <- target_sim_parms[[d]][["dist"]]
+    marg_quants <- dists[["marg"]][[q]]
+    r_quants <- dists[["cond"]][["R"]][[q]]
+    nr_quants <- dists[["cond"]][["NR"]][[q]]
+    lab <- if (q == "mean") {c("mean_0", "mean_1", "mean_2")
+    } else {c("sigma2_0", "sigma2_1", "sigma2_2")}
+    
+    q_0 <- marg_quants[[lab[1]]]
+    
+    q_star <- marg_quants[[lab[2]]]
+    R_q_star <- r_quants[[lab[2]]]
+    NR_q_star <- nr_quants[[lab[2]]]
+    
+    q_T <- marg_quants[[lab[3]]]
+    R_q_T <- r_quants[[lab[3]]]
+    NR_q_T <- nr_quants[[lab[3]]]
+    
+    pre_R_q_traj <- 
+      approx(c(t_0, crit_t), c(q_0, q_star), xout=t_0:crit_t)$y
+    
+    sim_trajectories[[d]][[q]][["pre_r"]] <- pre_R_q_traj
+    
+    if (q=="mean") {
+      # Want to simulate Y_t*,.....
+      # May be more realistic to simulate Y_t = alpha(Y_t*) + (1-alpha)(mu_t*)
+      #  + mu_t + epsilon_t, but may be more work than it's worth
+      #cond_crit_shift <- r_quants[[lab[2]]]-q_star
+    }
+    post_R_q_traj_R <- 
+      approx(c(crit_t, t_T), c(R_q_star, R_q_T), xout=crit_t:t_T)$y
+    post_R_q_traj_NR <- 
+      approx(c(crit_t, t_T), c(NR_q_star, NR_q_T), xout=crit_t:t_T)$y
+    sim_trajectories[[d]][[q]][["post_r"]] <- 
+      list(R = post_R_q_traj_R, NR = post_R_q_traj_NR)
+    
+  }
+}
+
+
+```
+
+```{r}
+Print_List <- function(vec) {
+  Output <- "c("
+  i <- 1
+  for (v in vec) {
+    Output <- paste0(Output, v)
+    if (i<length(vec)) {
+      Output <- paste0(Output, ", ")
+      i <- i+1
+    } 
+  }
+  Output <- paste0(Output, ")")
+  return(Output)
+}
+```
+
+```{r}
+for (d in dtr_list) {
+  print("***************")
+  print(paste0("*** ", d, " ***"))
+  print("***************")
+  for (q in names(sim_trajectories[[d]])) {
+    lists <- sim_trajectories[[d]][[q]]
+    message("Pre-R ", q, ": ", Print_List(lists[["pre_r"]]))
+    message("Post-R ", q, " (R): ", Print_List(lists[["post_r"]][["R"]]))
+    message("Post-R ", q, " (NR): ", Print_List(lists[["post_r"]][["NR"]]))
+  }
+}
+```
+
+
+
+# Five Time Points
+```{r}
+t_0 <- 0
+crit_t <- 2
+t_T <- 4
+
+
+dtr_list <- names(target_sim_parms)
+sim_trajectories <- NULL
+for (d in dtr_list) {
+  sim_trajectories[[d]] <- list(mean=NULL, var=NULL)
+  for (q in c("mean", "var")) {
+    dists <- target_sim_parms[[d]][["dist"]]
+    marg_quants <- dists[["marg"]][[q]]
+    r_quants <- dists[["cond"]][["R"]][[q]]
+    nr_quants <- dists[["cond"]][["NR"]][[q]]
+    lab <- if (q == "mean") {c("mean_0", "mean_1", "mean_2")
+    } else {c("sigma2_0", "sigma2_1", "sigma2_2")}
+    
+    q_0 <- marg_quants[[lab[1]]]
+    
+    q_star <- marg_quants[[lab[2]]]
+    R_q_star <- r_quants[[lab[2]]]
+    NR_q_star <- nr_quants[[lab[2]]]
+    
+    q_T <- marg_quants[[lab[3]]]
+    R_q_T <- r_quants[[lab[3]]]
+    NR_q_T <- nr_quants[[lab[3]]]
+    
+    pre_R_q_traj <- 
+      approx(c(t_0, crit_t), c(q_0, q_star), xout=t_0:crit_t)$y
+    
+    sim_trajectories[[d]][[q]][["pre_r"]] <- pre_R_q_traj
+    
+    if (q=="mean") {
+      # Want to simulate Y_t*,.....
+      # May be more realistic to simulate Y_t = alpha(Y_t*) + (1-alpha)(mu_t*)
+      #  + mu_t + epsilon_t, but may be more work than it's worth
+      #cond_crit_shift <- r_quants[[lab[2]]]-q_star
+    }
+    post_R_q_traj_R <- 
+      approx(c(crit_t, t_T), c(R_q_star, R_q_T), xout=crit_t:t_T)$y
+    post_R_q_traj_NR <- 
+      approx(c(crit_t, t_T), c(NR_q_star, NR_q_T), xout=crit_t:t_T)$y
+    sim_trajectories[[d]][[q]][["post_r"]] <- 
+      list(R = post_R_q_traj_R, NR = post_R_q_traj_NR)
+    
+  }
+}
+
+for (d in dtr_list) {
+  print("***************")
+  print(paste0("*** ", d, " ***"))
+  print("***************")
+  for (q in names(sim_trajectories[[d]])) {
+    lists <- sim_trajectories[[d]][[q]]
+    message("Pre-R ", q, ": ", Print_List(lists[["pre_r"]]))
+    message("Post-R ", q, " (R): ", Print_List(lists[["post_r"]][["R"]]))
+    message("Post-R ", q, " (NR): ", Print_List(lists[["post_r"]][["NR"]]))
+  }
+}
+
+```
+
+
+
+
+
+
+```{r}
+# Calculate alpha for simulating Y_{t^*+1}
+#for (d in dtr_list) {
+#  
+#}
+```
+
+
+

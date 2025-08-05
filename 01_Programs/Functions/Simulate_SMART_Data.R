@@ -22,18 +22,20 @@
 ####                07 JUL 2024 (GJD) - Cleaned up code to incorporate new
 ####                      Derive_Sim_Parms() function (replaced 
 ####                      Obtain_All_Sim_Params())
+####                24 FEB 2025 (GJD) - Cleaned up Randomize_DTR_n_i() and created
+####                      Randomize_DTR_Proto() to allow for complete randomization
+####                      based DTR assignment
 
 
 
-# Randomize the DTR Assignments and Sample Sizes
+# Randomize DTR Assignments for a Prototypical SMART
 ### driver_parms = Output of Process_Driver_Row_Main() function
-Randomize_DTR_n_i <- function(driver_parms) {
-  below_min_dtr_rep <- TRUE
-  if (driver_parms[["SMART_structure"]]=="prototypical") {
-    dtr_list <- c("d_1_1", "d_1_m1", "d_m1_1", "d_m1_m1")
+Randomize_DTR_Proto <- function(driver_parms) {
+  dtr_list <- c("d_1_1", "d_1_m1", "d_m1_1", "d_m1_m1")
+  if (driver_parms[["ra_structure"]]=="bernoulli") {
     dtr_probs <- driver_parms[["p_dtr"]]
-    
     # Repeat until the minimum number of clusters randomized to a DTR is met
+    below_min_dtr_rep <- TRUE
     while (below_min_dtr_rep) {
       dtr_assignments <- sample(x=dtr_list, 
                                 size=driver_parms[["n_clusters"]], 
@@ -47,8 +49,37 @@ Randomize_DTR_n_i <- function(driver_parms) {
       below_min_dtr_rep <- (min(dtr_representations)<driver_parms[["min_dtr_obs"]])
     }
   }
-  size_probs <- driver_parms[["p_cluster_size"]]
+  if (driver_parms[["ra_structure"]]=="complete_ra") {
+    dtrs_to_draw <- c()
+    # Make a list of ~N DTR assignments, balanced between each DTR according to
+    # p_dtr
+    for (d in (1:length(dtr_list))) {
+      dtr <- dtr_list[d]
+      n_clusters_per_dtr <- 
+        ceil(driver_parms[["n_clusters"]]*driver_parms[["p_dtr"]][d])
+      dtrs_to_draw <- c(dtrs_to_draw, rep(dtr, n_clusters_per_dtr))
+    }
+    # Sample from the list without replacement to get roughly even DTR assignments
+    dtr_assignments <- 
+      sample(dtrs_to_draw, driver_parms[["n_clusters"]], replace=FALSE)
+  }
   
+  Output <- dtr_assignments
+  return(Output)
+}
+  
+
+
+
+
+# Randomize the DTR Assignments and Sample Sizes
+### driver_parms = Output of Process_Driver_Row_Main() function
+Randomize_DTR_n_i <- function(driver_parms) {
+  if (driver_parms[["SMART_structure"]]=="prototypical") {
+    dtr_assignments <- Randomize_DTR_Proto(driver_parms=driver_parms)
+  }
+  
+  size_probs <- driver_parms[["p_cluster_size"]]
   # If only one cluster size then just produce the vector without sampling
   if (length(driver_parms[["cluster_sizes"]])==1) {
     cluster_sizes <- rep(x=driver_parms[["cluster_sizes"]][1], 

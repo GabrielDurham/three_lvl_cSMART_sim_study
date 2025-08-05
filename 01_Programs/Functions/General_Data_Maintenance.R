@@ -27,6 +27,9 @@
 ####                              sheet
 ####        10 SEP 2024 (GJD) - Fixed issue in processing driver file row where it didn't
 ####                              read NAs correctly
+####        25 FEB 2025 (GJD) - Incorporated random seed (and set default) in driver_parms
+####        25 FEB 2025 (GJD) - Incorporated max_attempts (and set default) in driver_parms
+####        02 JUN 2025 (GJD) - Made t_0, crit_t, t_max driver-file parameters
 
 #Read in Driver File
 ### path = File location for driver file
@@ -249,6 +252,17 @@ Process_Driver_Row_Main <- function(driver_row){
   }
   # Default to no alternate models
   if (is.na(driver_row$n_alt_fit)) {Output[["n_alt_fit"]] <- 0}
+  # Default is 657 - UGA vs TCU National Championship Game
+  if (is.na(driver_row$seed)) {Output[["seed"]] <- 657}
+  # Default is 3
+  # Number of times an iteration will try to simulate/fit data before terminating
+  # the full run
+  if (is.na(driver_row$max_attempts)) {Output[["max_attempts"]] <- 3}
+  
+  # Default to three time points (0,1,2), critical time point at 1
+  if (is.na(driver_row$t_0)) {Output[["t_0"]] <- 0}
+  if (is.na(driver_row$crit_t)) {Output[["crit_t"]] <- 1}
+  if (is.na(driver_row$t_max)) {Output[["t_max"]] <- 2}
   
   return(Output)
 }

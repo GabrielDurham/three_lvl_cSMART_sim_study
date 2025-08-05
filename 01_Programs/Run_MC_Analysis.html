@@ -1629,23 +1629,6 @@ from a three-level clustered SMART and analyze the data using the method
 proposed in this paper</p>
 <pre class="r"><code># Load in packages and file paths
 source(file=&quot;Preamble.R&quot;)</code></pre>
-<pre><code>## 
-## Attaching package: &#39;dplyr&#39;</code></pre>
-<pre><code>## The following objects are masked from &#39;package:stats&#39;:
-## 
-##     filter, lag</code></pre>
-<pre><code>## The following objects are masked from &#39;package:base&#39;:
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre><code>## 
-## Attaching package: &#39;MASS&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:dplyr&#39;:
-## 
-##     select</code></pre>
-<pre><code>## Loading required package: foreach</code></pre>
-<pre><code>## Loading required package: rngtools</code></pre>
-<pre><code>## Loading required package: iterators</code></pre>
-<pre><code>## Loading required package: parallel</code></pre>
 <pre class="r"><code># Pull in functions for general data maintenance
 source(file=paste0(helper_funcs_path, &quot;General_Data_Maintenance.R&quot;))
 # Pull in functions for pre-response MC simulations
@@ -1660,7 +1643,6 @@ source(file=paste0(helper_funcs_path, &quot;Simulate_and_Fit_Data.R&quot;))
 source(file=paste0(helper_funcs_path, &quot;Conduct_Inference.R&quot;))
 # Pull in model fitting function
 source(file=paste0(model_fit_func_path, &quot;function_v3.5_1.R&quot;))</code></pre>
-<pre><code>## Loading required package: usethis</code></pre>
 <pre class="r"><code># Define alternate fit settings
 alt_fit_settings_types_sheets &lt;- list(c(&quot;static&quot;, &quot;alt_fit_settings_static&quot;))
 

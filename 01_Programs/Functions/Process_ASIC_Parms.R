@@ -64,7 +64,6 @@ Check_Variance_Validity <- function(cp_settings, var_parm_settings_pre_r,
                          det=det(sim_parms_n_d[["sim_parms"]][["Sigma_2"]][[r]])))
     }
   }}
-  
   Output <- sigma_2_mat_dets
   return(Output)
 }
@@ -244,12 +243,14 @@ Process_Variance_Settings <- function(cp_settings_df, cp_setting_base,
                                       comp=c("d_1_1", "d_m1_m1"), notes_base="") {
   base_settings <- 
     cp_settings_df[cp_settings_df$cond_parm_setting==cp_setting_base, ]
+
   base_validity <- 
     Check_Variance_Validity(cp_settings=base_settings,
                             var_parm_settings_pre_r=var_parm_settings_pre_r,
                             var_parm_settings_post_r=var_parm_settings_post_r, 
                             pre_r_cond_parms=pre_r_cond_parms,
                             cluster_sizes=cluster_sizes)
+
   new_parms <- Modify_Var_Comps(cp_settings=base_settings,
                                 var_parm_settings_pre_r=var_parm_settings_pre_r,
                                 var_parm_settings_post_r=var_parm_settings_post_r, 

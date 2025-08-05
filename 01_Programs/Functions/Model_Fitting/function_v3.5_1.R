@@ -1,10 +1,12 @@
 
 set.seed(1234)
+suppressPackageStartupMessages({
 library(stats)
 library(pracma)
 library(MASS)
 library(geepack)
 library(devtools)
+})
 #library(SMARTutils)
 options(digits=6)
 

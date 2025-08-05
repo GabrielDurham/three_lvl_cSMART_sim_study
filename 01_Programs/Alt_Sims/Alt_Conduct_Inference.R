@@ -297,151 +297,6 @@ Pull_Inference_Parms_All_Fits <- function(driver_parms, fit_settings_df) {
 
 
 
-
-
-
-
-
-### Oversaturated Model Fits
-
-# Conduct Hypothesis Tests for Oversaturated Model
-### driver_parms = Output of Process_Driver_Row_Main() function
-### model_output = Output of solve_SMART_Multilayer() function
-### oversat_contrast_output = Output of Make_Oversat_EOS_Contrast() function
-### alpha = Level of test
-### use_t = Boolean indicating whether to use t-distribution
-Conduct_Hypothesis_Tests_Oversat <- function(driver_parms, model_output, 
-                                             oversat_contrast_output, 
-                                             alpha, use_t) {
-  q <- ifelse(driver_parms[["SMART_structure"]]=="prototypical", 12, NA)
-  temp_output <- NULL
-  for (test_type in names(oversat_contrast_output)) {
-    contrasts <- oversat_contrast_output[[test_type]][["contrast_mat"]]
-    temp_output[[test_type]] <- hypothesis_testing(result=model_output,
-                                                   aimed_test=contrasts,
-                                                   q=q,
-                                                   alpha=alpha,
-                                                   use_t=use_t)
-    contrast_labels <- oversat_contrast_output[[test_type]][["labels"]]
-    temp_output[[test_type]][,colnames(contrast_labels)] <- contrast_labels
-  }
-  
-  Output <- temp_output
-  return(Output)
-}
-
-# Make Oversaturated Contrast Matrix for EOS Comparison
-### driver_parms = Output of Process_Driver_Row_Main() function
-### paras_names = Names of parameters that were estimated
-###   Must be in order that they appear in summary_paras output
-Make_Oversat_EOS_Contrast <- function(driver_parms, paras_names) {
-  if (driver_parms[["SMART_structure"]]=="prototypical") {
-    
-    contrasts <- as.data.frame(matrix(0, ncol=length(paras_names)+1, nrow=6))
-    colnames(contrasts) <- c(paras_names, "zero")
-    row <- 1
-    labels <- data.frame()
-    
-    SMART_structure_df <- Define_SMART_Pathways("prototypical")
-    for (i in (1:(nrow(SMART_structure_df)-1))) {
-      d_1 <- SMART_structure_df[i, ]
-      lab_1 <- paste0("(", d_1$a_1, ",", d_1$a_2nr, ")")
-      for (ii in ((i+1):nrow(SMART_structure_df))) {
-        d_2 <- SMART_structure_df[ii, ]
-        lab_2 <- paste0("(", d_2$a_1, ",", d_2$a_2nr, ")")
-        
-        labels <- 
-          rbind(labels, data.frame(type="E[Y_2]",
-                                   comparison=paste0(lab_1, " vs ", lab_2),
-                                   dtr_1=d_1$dtr,
-                                   dtr_2=d_2$dtr))
-        contrasts[row, "theta_1_t_max"] <- d_1$a_1 - d_2$a_1
-        contrasts[row, "theta_2_t_max"] <- d_1$a_2nr - d_2$a_2nr
-        contrasts[row, "theta_3_t_max"] <- 
-          (d_1$a_1*d_1$a_2nr) - (d_2$a_1*d_2$a_2nr)
-        row <- row+1
-      }
-    }
-  }
-  Output <- list(EOS=list(contrast_mat=contrasts,
-                          labels=labels))
-  return(Output)
-}
-
-# Pull Inference Parameters for All Oversaturated Fits
-### driver_parms = Output of Process_Driver_Row_Main() function
-### fit_settings_df = Dataframe of fit settings
-### fit_name = Name of alternate fit
-Pull_Inference_Oversat_Fit <- function(driver_parms, fit_settings_df, fit_id) {
-  fit_setting <- driver_parms[[paste0("alt_fit_setting_", fit_id)]]
-  fit_setting_parms <- 
-    fit_settings_df[fit_settings_df$fit_setting==fit_setting, ]
-  Output <- list(
-    alpha=fit_setting_parms$alpha[1],
-    use_t=(fit_setting_parms$use_t[1]==1)
-  )
-  
-  return(Output)
-}
-
-
-# Conduct Inference For Oversaturated Runs
-### driver_parms = Output of Process_Driver_Row_Main() function
-### fit_inference_parms = Output of Pull_Inference_Parms_All_Fits() function 
-###   (restricted) to fit in question
-### fit_simulation_output = List of output from all iterations under that fit
-Process_Oversat_Sims <- function(driver_parms, fit_inference_parms,
-                                 fit_simulation_output) {
-  temp_output <- NULL
-  problem_iters <- c()
-  
-  
-  paras_names <- fit_simulation_output[[1]][["summary_paras"]]$Parameter
-  oversat_contrast_output <- 
-    Make_Oversat_EOS_Contrast(driver_parms=driver_parms,
-                              paras_names=paras_names)
-  # Want a different dataframe of fits for each outcome type
-  for (test_type in names(oversat_contrast_output)) {
-    temp_output[[test_type]] <- data.frame()
-  }
-  for (iter in (1:length(fit_simulation_output))) {
-    #Construct contrasts and run hypothesis testing
-    iter_data <- fit_simulation_output[[iter]]
-    iter_inference <- tryCatch(
-      withCallingHandlers({
-        Conduct_Hypothesis_Tests_Oversat(driver_parms=driver_parms,
-                                         model_output=iter_data, 
-                                         oversat_contrast_output=oversat_contrast_output, 
-                                         alpha=fit_inference_parms[["alpha"]], 
-                                         use_t=fit_inference_parms[["use_t"]])
-      }, warning=function(w) {problem_iters <<- c(problem_iters, iter)
-      invokeRestart("muffleWarning")
-      }), error=function(e) {
-        problem_iters <- c(problem_iters, iter)
-        return(NULL)})
-    # Only store valid output
-    if (!is.null(iter_inference)) {
-      # Store output
-      for (test_type in names(oversat_contrast_output)) {
-        iter_inference[[test_type]]$iter <- iter
-        temp_output[[test_type]] <- rbind(temp_output[[test_type]],
-                                          iter_inference[[test_type]])
-      }
-    }
-  }
-  Output <- list(inf_output=temp_output, problem_iters=problem_iters)
-  return(Output)
-}
-
-
-
-
-
-
-
-
-
-
 # Conduct Raw Inference for a Simulation Run (Single Row of Main Driver)
 ### simulation_output = Output of Execute_Driver_Row() function
 ### driver_parms = Output of Process_Driver_Row_Main() function
@@ -461,12 +316,11 @@ Process_Oversat_Sims <- function(driver_parms, fit_inference_parms,
 ###           comps[[1]] defining DTR_1 and the rows of comps[[2]] defining DTR_2.
 ###           E.g. If comps[[1]][i,]=[1,1], comps[[2]][i,]=[-1,1], then the ith
 ###           comparison we'd make is (1,1) vs (-1,1) (Y(1,1)-Y(-1,1))
-### fit_settings_df = Dataframe of fit settings (Used for oversaturated fits)
 Conduct_Inference_for_Sim_Run <- function(simulation_output, driver_parms, 
                                           inference_parms, 
                                           alt_fit_settings_dfs=NULL,
                                           test_types=c("EOS", "AUC"),
-                                          comps=NULL, fit_settings_df=NULL) {
+                                          comps=NULL) {
   temp_output <- NULL
   problem_iters <- c()
   for (fit in names(simulation_output)) {
@@ -540,18 +394,6 @@ Conduct_Inference_for_Sim_Run <- function(simulation_output, driver_parms,
           }
         }
       }
-      if (driver_parms[[paste0("alt_fit_type_", fit_id)]]=="oversat") {
-        # HERE
-        fit_inference_parms <- 
-          Pull_Inference_Oversat_Fit(driver_parms=driver_parms, 
-                                     fit_settings_df=fit_settings_df, 
-                                     fit_id=fit_id)
-        fit_inference_output <- 
-          Process_Oversat_Sims(driver_parms=driver_parms, 
-                               fit_inference_parms=fit_inference_parms,
-                               fit_simulation_output=simulation_output[[fit]])
-        temp_output[[fit]] <- fit_inference_output[["inf_output"]][["EOS"]]
-      }
     }
   }
   # Remove iterations that didn't converge
@@ -579,35 +421,47 @@ Conduct_Inference_for_Sim_Run <- function(simulation_output, driver_parms,
 ### dtr_marg_means = Element of Derive_Sim_Parms() output for given sample size/DTR
 ###           Should correspond to [["dist"]][["marg"]][["mean"]] element
 ###             
-Derive_True_Value_DTR <- function(dtr_marg_means, test_type) {
+Derive_True_Value_DTR_Alt <- function(driver_parms, dtr_marg_means, test_type) {
   if (test_type=="EOS") {
-    Output <- dtr_marg_means[["mean_2"]]
+    Output <- dtr_marg_means[[paste0("mean_", driver_parms[["t_max"]])]]
   } else if (test_type=="AUC") {
-    area_trap_1 <- ((dtr_marg_means[["mean_0"]]+dtr_marg_means[["mean_1"]])/2)*(1)
-    area_trap_2 <- ((dtr_marg_means[["mean_1"]]+dtr_marg_means[["mean_2"]])/2)*(1)
-    total_scaled_area <- (area_trap_1+area_trap_2)/(2)
+    area_trap <- 0
+    for (t in (driver_parms[["t_0"]]:(driver_parms[["t_max"]]-1))) {
+      mean_1 <- paste0("mean_", t)
+      mean_2 <- paste0("mean_", t+1)
+      temp_area_trap <- 
+        ((dtr_marg_means[[mean_1]]+dtr_marg_means[[mean_2]])/2)*(1)
+      area_trap <- area_trap + temp_area_trap
+    }
+    total_scaled_area <- area_trap/(driver_parms[["t_max"]])
     Output <- total_scaled_area
   }
+  return(Output)
 }
 
 
 
 # Derive the True Value for a Comparison
 ## Could do this a lot faster but it won't take too long
-Derive_True_Values <- function(dtr_comp_df, sim_parms_n, test_type) {
+Derive_True_Values_Alt <- function(driver_parms, dtr_comp_df, dist_data_n, 
+                                   test_type) {
   temp_out <- dtr_comp_df[ , c("dtr_1", "dtr_2")]
   temp_out$raw_1 <- NA
   temp_out$raw_2 <- NA
   for (row in rownames(temp_out)) {
     dtr_1 <- temp_out[row, "dtr_1"]
     dtr_2 <- temp_out[row, "dtr_2"]
-    means_1 <- sim_parms_n[[dtr_1]][["dist"]][["marg"]][["mean"]]
-    means_2 <- sim_parms_n[[dtr_2]][["dist"]][["marg"]][["mean"]]
-    
-    temp_out[row, "raw_1"] <-  Derive_True_Value_DTR(dtr_marg_means=means_1, 
-                                                     test_type=test_type)
-    temp_out[row, "raw_2"] <-  Derive_True_Value_DTR(dtr_marg_means=means_2, 
-                                                     test_type=test_type)
+    means_1 <- dist_data_n[[dtr_1]][["dist"]][["marg"]][["mean"]]
+    means_2 <- dist_data_n[[dtr_2]][["dist"]][["marg"]][["mean"]]
+
+    temp_out[row, "raw_1"] <-  
+      Derive_True_Value_DTR_Alt(driver_parms=driver_parms,
+                                dtr_marg_means=means_1, 
+                                test_type=test_type)
+    temp_out[row, "raw_2"] <-  
+      Derive_True_Value_DTR_Alt(driver_parms=driver_parms,
+                                dtr_marg_means=means_2, 
+                                test_type=test_type)
   }
   
   temp_out$true_value <- temp_out$raw_1 - temp_out$raw_2
@@ -619,34 +473,30 @@ Derive_True_Values <- function(dtr_comp_df, sim_parms_n, test_type) {
 # Derive True Values for Estimands
 ### driver_parms = Output of Process_Driver_Row_Main() function
 ### raw_sim_inference = Output of Conduct_Inference_for_Sim_Run() function
-### sim_parms = Output of Derive_Sim_Parameters() function
+### dist_data = Output of Build_All_Distribution_Mats() function
 ### cp_settings = Dataframe of settings of conditional parameters
 ###               *** Restricted to simulation setting under consideration
-### pre_r_marg_parms = Dataframe of marginal pre-response variance parameter settings
 ### alt_fit_settings_dfs = List of dataframe of driver sheets of alternate model 
 ###                        fit settings (indexed by alternate fit types)
 #### Returns copy of raw_sim_inference with true values attached
-Derive_True_Diffs <- function(driver_parms, raw_sim_inference, sim_parms,
-                              cp_settings, pre_r_marg_parms, 
-                              alt_fit_settings_dfs) {
+Derive_True_Diffs_Alt <- function(driver_parms, raw_sim_inference, dist_data,
+                                  cp_settings, alt_fit_settings_dfs) {
   temp_output <- raw_sim_inference
-  sim_parms_n <- sim_parms[[1]]
-  
+  dist_data_n <- dist_data[[1]]
+
   for (fit in names(raw_sim_inference)) {
     #Determine if an alternate fit
     alt_fit <- strsplit(x=fit, split="fit_")[[1]][1]=="alt_"
     fit_id <- strsplit(x=fit, split="fit_")[[1]][2]
     if (alt_fit) {
       alt_fit_setting <- driver_parms[[paste0("alt_fit_setting_", fit_id)]]
-      alt_fit_type <- driver_parms[[paste0("alt_fit_type_", fit_id)]]
-      if (alt_fit_type=="static") {
-        alt_fit_parms <- 
-          alt_fit_settings_dfs[["static"]][alt_fit_settings_dfs[["static"]]$alt_fit_setting==alt_fit_setting, ]
-        test_types <- alt_fit_parms$outcome_type[1]
-      } else if (alt_fit_type=="oversat") {test_types <- c("EOS")}
+      alt_fit_parms <- 
+        alt_fit_settings_dfs[["static"]][alt_fit_settings_dfs[["static"]]$alt_fit_setting==alt_fit_setting, ]
+      test_types <- alt_fit_parms$outcome_type[1]
     } else {
       test_types <- names(raw_sim_inference[[fit]])
     }
+
     for (test_type in test_types) {
       if (alt_fit) {
         inference_results <- raw_sim_inference[[fit]]
@@ -657,10 +507,11 @@ Derive_True_Diffs <- function(driver_parms, raw_sim_inference, sim_parms,
       temp_inf_results$temp_order <- (1:nrow(temp_inf_results))
       comp_shell <- temp_inf_results[temp_inf_results$iter==min(temp_inf_results$iter),
                                      c("dtr_1", "dtr_2")]
-      true_diffs <- Derive_True_Values(dtr_comp_df=comp_shell, 
-                                       sim_parms_n=sim_parms_n, 
-                                       test_type=test_type)
-      
+      true_diffs <- Derive_True_Values_Alt(driver_parms=driver_parms,
+                                           dtr_comp_df=comp_shell, 
+                                           dist_data_n=dist_data_n, 
+                                           test_type=test_type)
+
       temp_inf_results <- merge(x=temp_inf_results, y=true_diffs,
                                 by=c("dtr_1", "dtr_2"),
                                 all.x=TRUE)
@@ -694,9 +545,8 @@ Derive_True_Diffs <- function(driver_parms, raw_sim_inference, sim_parms,
 ### path = Path where simulation results are stored
 ### test_types = Primary test types to run
 ###              Acceptable: EOS, AUC, A1/A2/Int Main effects
-Conduct_Inference_for_Driver_Run <- function(path, test_types) {
+Conduct_Inference_for_Driver_Run_Alt <- function(path) {
   full_driver <- readRDS(paste0(path, "/Driver"))
-  pre_r_mc_parms <- readRDS(paste0(path, "/Pre_R_MC_Parms"))
   sims_run <- list.files(path, pattern = paste0("^", "sim"), all.files = TRUE) 
   temp_output <- NULL
   for (sim in sims_run) {
@@ -706,31 +556,28 @@ Conduct_Inference_for_Driver_Run <- function(path, test_types) {
     driver_parms <- Process_Driver_Row_Main(driver_row=driver_row)
     cp_settings_df <- full_driver[["cp_settings"]]
     cp_settings <- 
-      cp_settings_df[cp_settings_df$cond_parm_setting==driver_parms[["cond_parm_setting"]],]
+      cp_settings_df[cp_settings_df$alt_cp_setting==driver_parms[["cond_parm_setting"]],]
     raw_sim_output <- readRDS(paste0(path, "/", sim))
+
     inference_parms <- 
       Pull_Inference_Parms_All_Fits(driver_parms=driver_parms, 
                                     fit_settings_df=full_driver[["fit_settings"]])
     # Conduct raw inference
-    raw_sim_inference <- 
-      Conduct_Inference_for_Sim_Run(simulation_output=raw_sim_output, 
-                                    driver_parms=driver_parms,
-                                    inference_parms=inference_parms,
-                                    fit_settings_df=full_driver[["fit_settings"]])
-    sim_parms <- Derive_Sim_Parms(driver_parms=driver_parms,
-                                  cp_settings_df=full_driver[["cp_settings"]],
-                                  pre_r_marg_parms=full_driver[["var_parms_pre_r"]],
-                                  pre_r_cond_parms=pre_r_mc_parms, 
-                                  post_r_var_parms=full_driver[["var_parms_post_r"]])
+    raw_sim_inference <- Conduct_Inference_for_Sim_Run(simulation_output=raw_sim_output, 
+                                                       driver_parms=driver_parms,
+                                                       inference_parms=inference_parms)
     
+    dist_data <- 
+      Build_All_Distribution_Mats(driver_parms=driver_parms, 
+                                  cp_settings=cp_settings)
+
     # Calculate and merge on the true values
     temp_output[[sim]] <- 
-      Derive_True_Diffs(driver_parms=driver_parms, 
-                        raw_sim_inference=raw_sim_inference,
-                        sim_parms=sim_parms,
-                        cp_settings=cp_settings,
-                        pre_r_marg_parms=full_driver[["var_parms_pre_r"]],
-                        alt_fit_settings_dfs=full_driver[["alt_fit_settings"]])
+      Derive_True_Diffs_Alt(driver_parms=driver_parms, 
+                            raw_sim_inference=raw_sim_inference,
+                            dist_data=dist_data,
+                            cp_settings=cp_settings,
+                            alt_fit_settings_dfs=full_driver[["alt_fit_settings"]])
     
   }
   Output <- temp_output

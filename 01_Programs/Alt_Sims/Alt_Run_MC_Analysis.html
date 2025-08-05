@@ -11,7 +11,7 @@
 
 
 
-<title>Pre Response Conditional Parameter MC</title>
+<title>Alt_Run_MC_Analysis</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -1619,41 +1619,75 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">Pre Response Conditional Parameter MC</h1>
+<h1 class="title toc-ignore">Alt_Run_MC_Analysis</h1>
 
 </div>
 
 
-<p>This is code which processes the pre-response parameter settings from
-a driver file and derives response-conditional variance/mean parameters
-and stores them</p>
+<p>This is code which processes driver file settings to simulate data
+from a three-level clustered SMART with more than three time points</p>
 <pre class="r"><code># Load in packages and file paths
-source(file=&quot;Preamble.R&quot;)</code></pre>
+source(file=&quot;Alt_Preamble.R&quot;)</code></pre>
 <pre class="r"><code># Pull in functions for general data maintenance
 source(file=paste0(helper_funcs_path, &quot;General_Data_Maintenance.R&quot;))
 # Pull in functions for pre-response MC simulations
-source(file=paste0(helper_funcs_path, &quot;Pre_R_Cond_Param_Sim.R&quot;))</code></pre>
-<pre class="r"><code># Read in driver
-raw_driver &lt;- read_xlsx(path=paste0(notes_path, &quot;Driver_Three_Level_Simulations.xlsx&quot;), 
-                        sheet=&quot;var_parm_settings_pre_r&quot;)</code></pre>
-<pre class="r"><code>#NOTE: Data will only be reproducible for same n_threads value
-registerDoParallel()
-#UGA vs TCU - CFP Championship 2023
-registerDoRNG(seed=657)
-#Execute driver file
-full_output &lt;- Execute_Raw_Driver_File_Pre_R(raw_driver=raw_driver, 
-                                             do_par=TRUE, 
-                                             n_threads=5)</code></pre>
-<pre class="r"><code># Get file name parameters_YYYYMMDD (with a/b/... suffix if files already exist)
-pre_r_MC_parms_export_file_name &lt;- Get_Export_File_Name(path=pre_r_param_path,
-                                                        prefix=&quot;parameters_&quot;, 
-                                                        file_suffix=&quot;.xlsx&quot;)
+source(file=paste0(helper_funcs_path, &quot;Pre_R_Cond_Param_Sim.R&quot;))
+# Pull in functions for data simulation
+source(file=paste0(helper_funcs_path, &quot;Simulate_SMART_Data.R&quot;))
+# Pull in functions for alternate data generation
+source(file=&quot;Alt_Helper_Functions.R&quot;)
+# Pull in functions for model fitting
+source(file=&quot;Alt_Simulate_and_Fit_Data.R&quot;)
+# Pull in functions for inference with multiple time points
+source(file=&quot;Alt_Conduct_Inference.R&quot;)
+# Pull in model fitting function
+source(file=paste0(model_fit_func_path, &quot;function_v3.5_1.R&quot;))</code></pre>
+<pre class="r"><code># Define alternate fit settings
+alt_fit_settings_types_sheets &lt;- list(c(&quot;static&quot;, &quot;alt_fit_settings_static&quot;))
 
-# Export results
-Export_Driver_Results(driver=Expand_Driver_File_Pre_R(raw_driver),
-                      driver_results=full_output,
-                      path=pre_r_param_path,
-                      file_name=pre_r_MC_parms_export_file_name)</code></pre>
+
+# Read in Driver File
+full_driver &lt;- Read_Driver_File(path=&quot;Alt_Driver_Three_Level_Simulations.xlsx&quot;, 
+                                driver_sheet=&quot;multi_time&quot;, 
+                                cp_sheet=&quot;alt_cp_settings&quot;,
+                                var_parm_pre_r_sheet=&quot;var_parm_settings_pre_r&quot;,
+                                var_parm_post_r_sheet=&quot;var_parm_settings_post_r&quot;,
+                                fit_settings_sheet=&quot;fit_settings&quot;,
+                                alt_fit_settings_types_sheets=alt_fit_settings_types_sheets)</code></pre>
+<pre class="r"><code># Grab folder name for exporting
+export_folder_name &lt;- Get_Export_File_Name(path=data_path, 
+                                           prefix=&quot;run_&quot;, 
+                                           file_suffix=&quot;&quot;)</code></pre>
+<pre class="r"><code># Execute a Main Sheet of a Driver File
+### full_driver = Output of Read_Driver_File() function
+### pre_r_mc_parms = Output of Import_Pre_R_MC_Results() function
+### do_par = Boolean indicating whether to parallelize
+### n_threads = Number of parallel threads to run, used if do_par==TRUE
+###             Note: Parallelization done using doRNG package, ensuring
+###                   replicability with respect to random seed
+### path = Path with past output stored
+### folder_name = Folder name to store output
+
+#NOTE: Data will only be reproducible for same n_threads value
+registerDoParallel()
+#UGA vs FSU - Orange Bowl 2023
+registerDoRNG(seed=633)
+
+
+Execute_Driver_File_Main_Alt(alt_driver=full_driver, 
+                             do_par=TRUE, 
+                             n_threads=5,
+                             path=data_path, 
+                             folder_name=Get_Export_File_Name(path=data_path, 
+                                                              prefix=&quot;run_&quot;, 
+                                                              file_suffix=&quot;&quot;))</code></pre>
+<pre class="r"><code># Conduct Inference on Simulations Run Above
+### path = Folder with simulation output to analyze (should not end in &quot;/&quot;)
+inference_output &lt;- 
+  Conduct_Inference_for_Driver_Run_Alt(path=paste0(data_path, export_folder_name))
+# Save Inference Output
+saveRDS(object=inference_output,
+        file=paste0(analysis_path, export_folder_name))</code></pre>
 
 
 

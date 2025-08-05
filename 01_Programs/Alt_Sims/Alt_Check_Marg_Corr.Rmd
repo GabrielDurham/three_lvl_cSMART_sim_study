@@ -1,0 +1,95 @@
+---
+title: "Alt_Check_Marg_Corr"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is code which checks the marginal correlation of the multi-time point
+estimator
+
+
+```{r Load in Preamble}
+# Load in packages and file paths
+source(file="Alt_Preamble.R")
+```
+
+```{r Load in Functions}
+# Pull in functions for general data maintenance
+source(file=paste0(helper_funcs_path, "General_Data_Maintenance.R"))
+# Pull in functions for pre-response MC simulations
+source(file=paste0(helper_funcs_path, "Pre_R_Cond_Param_Sim.R"))
+# Pull in functions for data simulation
+source(file=paste0(helper_funcs_path, "Simulate_SMART_Data.R"))
+# Pull in functions for alternate data generation
+source(file="Alt_Helper_Functions.R")
+# Pull in functions for model fitting
+source(file="Alt_Simulate_and_Fit_Data.R")
+# Pull in functions for inference with multiple time points
+source(file="Alt_Conduct_Inference.R")
+# Pull in model fitting function
+source(file=paste0(model_fit_func_path, "function_v3.5_1.R"))
+```
+
+
+```{r Read in Driver}
+# Define alternate fit settings
+alt_fit_settings_types_sheets <- list(c("static", "alt_fit_settings_static"))
+
+
+# Read in Driver File
+full_driver <- Read_Driver_File(path="Alt_Driver_Three_Level_Simulations.xlsx", 
+                                driver_sheet="multi_time", 
+                                cp_sheet="alt_cp_settings",
+                                var_parm_pre_r_sheet="var_parm_settings_pre_r",
+                                var_parm_post_r_sheet="var_parm_settings_post_r",
+                                fit_settings_sheet="fit_settings",
+                                alt_fit_settings_types_sheets=alt_fit_settings_types_sheets)
+
+
+```
+
+
+```{r Define_Base_Setting}
+base_label <- "Alt-ASIC-Eff-Size-y-n:2-ES:0.2-N:100-t:5"
+n_clusters <- 35000
+```
+
+
+```{r Adjust_Setting}
+base_row_raw <- 
+  full_driver[["driver"]][full_driver[["driver"]]$sim_label==base_label, ]
+driver_row <- base_row_raw
+
+driver_row$n_clusters <- n_clusters
+#driver_row$cond_parm_setting <- "ytot_v.thet.dhom_d.AR.hom_od.Ex.hom_ES_0.2_t5_adj"
+driver_parms <- Process_Driver_Row_Main(driver_row=driver_row)
+
+cp_settings_df <- full_driver[["cp_settings"]]
+cp_settings <- 
+  cp_settings_df[cp_settings_df$alt_cp_setting==driver_parms[["cond_parm_setting"]], ]
+dist_data <- Build_All_Distribution_Mats(driver_parms=driver_parms, 
+                                         cp_settings=cp_settings)
+```
+
+```{r Simulate_And_Fit_Data}
+set.seed(3318)
+sim_data <- Sim_SMART_Data_Alt(driver_parms=driver_parms, 
+                               dist_data=dist_data)
+
+
+fit_output <- Fit_Model(driver_parms=driver_parms, 
+                        fit_number=1, 
+                        fit_settings_df=full_driver[["fit_settings"]], 
+                        sim_data=sim_data)
+```
+
+
+```{r Print_Results}
+message("AR1 Correlation: ", fit_output[["var_paras"]][["para_diagonal"]][1])
+message("ICC: ", fit_output[["var_paras"]][["para_off_diagonal"]][1])
+```
+
+
+
+

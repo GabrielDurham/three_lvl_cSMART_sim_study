@@ -28,20 +28,15 @@ library(writexl)
 library(ggplot2)
 library(patchwork)
 })
-# suppressWarnings(library(readxl))
-# suppressWarnings(library(openxlsx))
-# suppressWarnings(library(dplyr))
-# suppressWarnings(library(MASS))
-# suppressWarnings(library(stats))
-# suppressWarnings(library(doRNG))
+
 
 # Establish paths
-notes_path <- "../00_Notes/"
-pre_r_param_path <- "../00_Notes/Pre_R_MC_Parameters/"
-ASIC_parms_path <- "../00_Notes/Sim_Parms_From_ASIC/"
-helper_funcs_path <- "Functions/"
-model_fit_func_path <- "Functions/Model_Fitting/"
-data_path <- "../02_Data/"
-analysis_path <- "../03_Analysis/"
-output_path <- "../04_Output/"
-figures_path <- "../04_Output/Figures/"
+notes_path <- "../../00_Notes/"
+pre_r_param_path <- "../../00_Notes/Pre_R_MC_Parameters/"
+ASIC_parms_path <- "../../00_Notes/Sim_Parms_From_ASIC/"
+helper_funcs_path <- "../Functions/"
+model_fit_func_path <- "../Functions/Model_Fitting/"
+data_path <- "../../02_Data/"
+analysis_path <- "../../03_Analysis/"
+output_path <- "../../04_Output/"
+figures_path <- "../../04_Output/Figures/"
